@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # ============= TELEGRAM BOT =============
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ferm-telegram-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://ferm:${DB_PASSWORD:-ferm123}@postgres:5432/ferm_bot
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ferm-network
+    command: python -m core.bot
+
+  # ============= POSTGRESQL =============
+  postgres:
+    image: postgres:15-alpine
+    container_name: ferm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ferm_bot
+      POSTGRES_USER: ferm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ferm123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - ferm-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ferm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============= REDIS =============
+  redis:
+    image: redis:7-alpine
+    container_name: ferm-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - ferm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============= ADMINER (Database UI) =============
+  adminer:
+    image: adminer:latest
+    container_name: ferm-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - ferm-network
+    depends_on:
+      - postgres
+
+# ============= VOLUMES =============
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ============= NETWORKS =============
+networks:
+  ferm-network:
+    driver: bridge
