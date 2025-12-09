@@ -17,11 +17,11 @@ from core.database.database import init_db, close_db
 # Імпорт всіх роутерів (handlers)
 from core.handlers import (
     start,
-    catalog,
-    cart,
-    weather,
-    grants,
-    consultation
+    # catalog,
+    # cart,
+    # weather,
+    # grants,
+    # consultation
 )
 
 # ============= НАЛАШТУВАННЯ ЛОГУВАННЯ =============
@@ -117,11 +117,11 @@ async def main():
     # Порядок важливий! start має бути першим
 
     dp.include_router(start.router)  # Команди /start, /help, головне меню
-    dp.include_router(catalog.router)  # Каталог товарів, категорії, підкатегорії
-    dp.include_router(cart.router)  # Кошик, додавання/видалення товарів
-    dp.include_router(weather.router)  # АгроПогода, підписки
-    dp.include_router(grants.router)  # АгроГранти, заявки
-    dp.include_router(consultation.router)  # ШІ-консультації
+    # dp.include_router(catalog.router)  # Каталог товарів, категорії, підкатегорії
+    # dp.include_router(cart.router)  # Кошик, додавання/видалення товарів
+    # dp.include_router(weather.router)  # АгроПогода, підписки
+    # dp.include_router(grants.router)  # АгроГранти, заявки
+    # dp.include_router(consultation.router)  # ШІ-консультації
 
     logger.info("📦 Всі роутери підключено")
 
