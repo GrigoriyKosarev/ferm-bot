@@ -117,7 +117,7 @@ async def main():
     # Порядок важливий! start має бути першим
 
     dp.include_router(start.router)  # Команди /start, /help, головне меню
-    # dp.include_router(catalog.router)  # Каталог товарів, категорії, підкатегорії
+    dp.include_router(catalog.router)  # Каталог товарів, категорії, підкатегорії
     # dp.include_router(cart.router)  # Кошик, додавання/видалення товарів
     # dp.include_router(weather.router)  # АгроПогода, підписки
     # dp.include_router(grants.router)  # АгроГранти, заявки

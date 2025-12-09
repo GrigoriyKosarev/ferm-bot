@@ -268,3 +268,26 @@ class ProductView(Base):
 
     def __repr__(self):
         return f"<ProductView(user_id={self.user_id}, product_id={self.product_id})>"
+
+
+class Category(Base):
+    __tablename__ = "category"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    parent_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(150), nullable=True)
+
+    def __repr__(self):
+        return f"<Category(name={self.name})>"
+
+class Product(Base):
+    __tablename__ = "product"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    category_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(150), nullable=True)
+    price = Column(Float, nullable=True)
+
+    def __repr__(self):
+        return f"<Product(name={self.name})>"
+
