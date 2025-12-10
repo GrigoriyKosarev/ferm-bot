@@ -1,293 +1,323 @@
 """
-Моделі бази даних для FERM Bot
-
-Таблиці:
-- users: користувачі бота
-- cart_items: товари в кошику
-- grant_applications: заявки на гранти
-- equipment_requests: заявки на оренду техніки
-- consultation_history: історія ШІ-консультацій
-- user_preferences: налаштування користувача
+SQLAlchemy 2.0 declarative models (async-ready)
+All tables and relationships ported from your original models.py
 """
+from __future__ import annotations
+
 from datetime import datetime
+from typing import List, Optional, Dict
+
 from sqlalchemy import (
-    Column, Integer, BigInteger, String, Float, Boolean,
+    Integer, BigInteger, String, Float, Boolean,
     DateTime, ForeignKey, Text, JSON, Index
 )
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import (
+    relationship,
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
+# -------------------------
+# User
+# -------------------------
 class User(Base):
-    """
-    Модель користувача бота
-
-    Зберігає інформацію про користувача Telegram,
-    його локацію для погоди, підписки тощо
-    """
     __tablename__ = "users"
 
-    # Первинний ключ
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Telegram дані (user_id - унікальний)
-    user_id = Column(BigInteger, unique=True, nullable=False, index=True)
-    username = Column(String(255), nullable=True)
-    first_name = Column(String(255), nullable=True)
-    last_name = Column(String(255), nullable=True)
+    # Telegram data
+    user_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False, index=True)
+    username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Контактна інформація
-    phone = Column(String(20), nullable=True)
-    email = Column(String(255), nullable=True)
+    # Contact
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Локація для погоди (зберігається після першого запиту)
-    saved_location = Column(String(255), nullable=True)  # Назва міста
-    latitude = Column(Float, nullable=True)
-    longitude = Column(Float, nullable=True)
-    location_key = Column(String(50), nullable=True)  # AccuWeather location key
+    # Location for weather
+    saved_location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    location_key: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
-    # Підписки на розсилки
-    weather_subscription = Column(Boolean, default=False)  # АгроПогода щоденно
-    grants_subscription = Column(Boolean, default=False)  # Новини про гранти
-    promotions_subscription = Column(Boolean, default=True)  # Акції (за замовчуванням)
+    # Subscriptions
+    weather_subscription: Mapped[bool] = mapped_column(Boolean, default=False)
+    grants_subscription: Mapped[bool] = mapped_column(Boolean, default=False)
+    promotions_subscription: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Налаштування сповіщень
-    notification_time = Column(String(5), default="08:00")  # Час розсилки (HH:MM)
+    # Notification time
+    notification_time: Mapped[str] = mapped_column(String(5), default="08:00")
 
-    # Метадані
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    last_active = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_blocked = Column(Boolean, default=False)  # Чи заблокував бота
+    # Metadata
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    last_active: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Зв'язки з іншими таблицями
-    cart_items = relationship("CartItem", back_populates="user", cascade="all, delete-orphan")
-    grant_applications = relationship("GrantApplication", back_populates="user")
-    equipment_requests = relationship("EquipmentRequest", back_populates="user")
-    consultations = relationship("ConsultationHistory", back_populates="user")
+    # Relationships
+    cart_items: Mapped[List["CartItem"]] = relationship(
+        "CartItem",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    grant_applications: Mapped[List["GrantApplication"]] = relationship(
+        "GrantApplication",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    equipment_requests: Mapped[List["EquipmentRequest"]] = relationship(
+        "EquipmentRequest",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    consultations: Mapped[List["ConsultationHistory"]] = relationship(
+        "ConsultationHistory",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
-    def __repr__(self):
-        return f"<User(user_id={self.user_id}, username={self.username})>"
+    def __repr__(self) -> str:
+        return f"<User(id={self.id} user_id={self.user_id} username={self.username})>"
 
 
+# -------------------------
+# CartItem
+# -------------------------
 class CartItem(Base):
-    """
-    Товар у кошику користувача
-
-    Зберігає товари, які користувач додав до кошика.
-    Дані синхронізуються перед переходом на сайт.
-    """
     __tablename__ = "cart_items"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Інформація про товар (з FERM API)
-    product_id = Column(Integer, nullable=False, index=True)  # ID товару на сайті
-    product_name = Column(String(500), nullable=False)
-    product_price = Column(Float, nullable=False)
-    product_image = Column(String(500), nullable=True)  # URL зображення
+    # FK uses users.user_id (telegram id) per original design
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
 
-    # Кількість та одиниці
-    quantity = Column(Float, default=1.0, nullable=False)  # Може бути дробове (кг, л)
-    unit = Column(String(50), default="шт")  # шт, кг, л, т
+    product_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    product_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    product_price: Mapped[float] = mapped_column(Float, nullable=False)
+    product_image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
-    # Категорія (для аналітики та рекомендацій)
-    category = Column(String(50), nullable=True)  # seeds, fertilizers, plant_protection
-    subcategory = Column(String(50), nullable=True)
+    quantity: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    unit: Mapped[str] = mapped_column(String(50), default="шт")
 
-    # Метадані
-    added_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    subcategory: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
-    # Зв'язок з користувачем
-    user = relationship("User", back_populates="cart_items")
+    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # Індекс для швидкого пошуку товарів користувача
+    user: Mapped["User"] = relationship("User", back_populates="cart_items")
+
     __table_args__ = (
         Index('idx_user_product', 'user_id', 'product_id'),
     )
 
-    def __repr__(self):
-        return f"<CartItem(user_id={self.user_id}, product={self.product_name})>"
+    def __repr__(self) -> str:
+        return f"<CartItem(id={self.id} user_id={self.user_id} product_id={self.product_id})>"
 
 
+# -------------------------
+# GrantApplication
+# -------------------------
 class GrantApplication(Base):
-    """
-    Заявка на грант (АгроГранти)
-
-    Зберігає заявки користувачів на отримання грантів
-    для фінансування сільськогосподарської діяльності
-    """
     __tablename__ = "grant_applications"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.user_id"), nullable=False)
 
-    # Контактні дані заявника
-    full_name = Column(String(255), nullable=False)
-    phone = Column(String(20), nullable=False)
-    email = Column(String(255), nullable=True)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Інформація про господарство
-    farm_size = Column(Float, nullable=True)  # Розмір у гектарах
-    farm_type = Column(String(255), nullable=True)  # Тип: рослинництво, тваринництво
-    region = Column(String(255), nullable=True)  # Область/регіон
-    district = Column(String(255), nullable=True)  # Район
+    farm_size: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    farm_type: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    region: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    district: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Деталі заявки
-    grant_program = Column(String(500), nullable=True)  # Назва програми гранту
-    requested_amount = Column(Float, nullable=True)  # Запитувана сума
-    purpose = Column(Text, nullable=True)  # Мета отримання гранту
-    description = Column(Text, nullable=True)  # Опис проекту
+    grant_program: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    requested_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    purpose: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Статус обробки
-    status = Column(String(50), default="pending")  # pending, processing, approved, rejected
-    admin_notes = Column(Text, nullable=True)  # Коментарі адміністратора
+    status: Mapped[str] = mapped_column(String(50), default="pending")
+    admin_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Метадані
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    processed_at = Column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
-    # Зв'язок
-    user = relationship("User", back_populates="grant_applications")
+    user: Mapped["User"] = relationship("User", back_populates="grant_applications")
 
-    def __repr__(self):
-        return f"<GrantApplication(id={self.id}, user_id={self.user_id}, status={self.status})>"
+    def __repr__(self) -> str:
+        return f"<GrantApplication(id={self.id} user_id={self.user_id} status={self.status})>"
 
 
+# -------------------------
+# EquipmentRequest
+# -------------------------
 class EquipmentRequest(Base):
-    """
-    Заявка на оренду техніки (АгроУклон)
-
-    Зберігає запити на оренду сільськогосподарської техніки
-    """
     __tablename__ = "equipment_requests"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.user_id"), nullable=False)
 
-    # Контактні дані
-    full_name = Column(String(255), nullable=False)
-    phone = Column(String(20), nullable=False)
-    email = Column(String(255), nullable=True)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Деталі техніки
-    equipment_type = Column(String(255), nullable=False)  # Трактор, комбайн тощо
-    equipment_id = Column(Integer, nullable=True)  # ID з каталогу machinery.ferm.in.ua
-    equipment_model = Column(String(255), nullable=True)  # Модель техніки
+    equipment_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    equipment_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    equipment_model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Параметри оренди
-    rental_start_date = Column(DateTime, nullable=True)  # Бажана дата початку
-    rental_duration = Column(Integer, nullable=True)  # Тривалість у днях
-    rental_area = Column(Float, nullable=True)  # Площа для обробки (га)
+    rental_start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rental_duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    rental_area: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
-    # Локація
-    location = Column(String(255), nullable=True)  # Місце використання
-    delivery_needed = Column(Boolean, default=False)  # Чи потрібна доставка
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    delivery_needed: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Додаткова інформація
-    notes = Column(Text, nullable=True)  # Коментарі, побажання
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Статус
-    status = Column(String(50), default="pending")  # pending, confirmed, completed, cancelled
+    status: Mapped[str] = mapped_column(String(50), default="pending")
 
-    # Метадані
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    processed_at = Column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
-    # Зв'язок
-    user = relationship("User", back_populates="equipment_requests")
+    user: Mapped["User"] = relationship("User", back_populates="equipment_requests")
 
-    def __repr__(self):
-        return f"<EquipmentRequest(id={self.id}, equipment={self.equipment_type})>"
+    def __repr__(self) -> str:
+        return f"<EquipmentRequest(id={self.id} equipment_type={self.equipment_type})>"
 
 
+# -------------------------
+# ConsultationHistory
+# -------------------------
 class ConsultationHistory(Base):
-    """
-    Історія ШІ-консультацій
-
-    Зберігає діалоги користувача з ШІ-консультантом
-    для покращення рекомендацій та аналітики
-    """
     __tablename__ = "consultation_history"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.user_id"), nullable=False)
 
-    # Діалог
-    user_message = Column(Text, nullable=False)  # Питання користувача
-    ai_response = Column(Text, nullable=False)  # Відповідь ШІ
+    user_message: Mapped[str] = mapped_column(Text, nullable=False)
+    ai_response: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # Контекст консультації
-    category = Column(String(100), nullable=True)  # seeds, fertilizers, plant_protection
-    intent = Column(String(100), nullable=True)  # selection, calculation, problem
+    category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    intent: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    # Рекомендовані товари (якщо є)
-    recommended_products = Column(JSON, nullable=True)  # [{"id": 1, "name": "..."}, ...]
+    recommended_products: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
 
-    # Метадані
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    tokens_used = Column(Integer, nullable=True)  # Для моніторингу витрат API
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    tokens_used: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    # Зв'язок
-    user = relationship("User", back_populates="consultations")
+    user: Mapped["User"] = relationship("User", back_populates="consultations")
 
-    # Індекс для швидкого пошуку історії користувача
     __table_args__ = (
         Index('idx_user_consultations', 'user_id', 'created_at'),
     )
 
-    def __repr__(self):
-        return f"<ConsultationHistory(id={self.id}, user_id={self.user_id})>"
+    def __repr__(self) -> str:
+        return f"<ConsultationHistory(id={self.id} user_id={self.user_id})>"
 
 
+# -------------------------
+# ProductView
+# -------------------------
 class ProductView(Base):
-    """
-    Статистика переглядів товарів
-
-    Для аналітики популярності товарів та персоналізації
-    """
     __tablename__ = "product_views"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, nullable=False, index=True)
-    product_id = Column(Integer, nullable=False, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
-    # Контекст перегляду
-    category = Column(String(50), nullable=True)
-    source = Column(String(50), nullable=True)  # catalog, search, recommendation
+    category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
-    # Метадані
-    viewed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # Індекси для аналітики
     __table_args__ = (
         Index('idx_product_popularity', 'product_id', 'viewed_at'),
         Index('idx_user_preferences', 'user_id', 'category'),
     )
 
-    def __repr__(self):
-        return f"<ProductView(user_id={self.user_id}, product_id={self.product_id})>"
+    def __repr__(self) -> str:
+        return f"<ProductView(user_id={self.user_id} product_id={self.product_id})>"
 
 
+# -------------------------
+# Category
+# -------------------------
 class Category(Base):
-    __tablename__ = "category"
+    __tablename__ = "categories"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    parent_id = Column(Integer, nullable=False, index=True)
-    name = Column(String(150), nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
 
-    def __repr__(self):
-        return f"<Category(name={self.name})>"
+    # Parent relationship (one parent)
+    parent: Mapped[Optional["Category"]] = relationship(
+        "Category",
+        back_populates="children",
+        remote_side=[id],  # правильне місце
+    )
 
+    # Children relationship (many children)
+    children: Mapped[List["Category"]] = relationship(
+        "Category",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        single_parent=True,  # обов’язково для delete-orphan
+    )
+
+    # Products in category
+    products: Mapped[List["Product"]] = relationship(
+        "Product",
+        back_populates="category",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Category(id={self.id}, name={self.name})>"
+
+
+# -------------------------
+# Product
+# -------------------------
 class Product(Base):
-    __tablename__ = "product"
+    __tablename__ = "products"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    category_id = Column(Integer, nullable=False, index=True)
-    name = Column(String(150), nullable=True)
-    price = Column(Float, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    available: Mapped[bool] = mapped_column(Boolean, default=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
-    def __repr__(self):
-        return f"<Product(name={self.name})>"
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"), nullable=False)
+    category: Mapped["Category"] = relationship("Category", back_populates="products")
 
+    def __repr__(self) -> str:
+        return f"<Product(id={self.id} name={self.name} price={self.price})>"
+
+class UserWeather(Base):
+    __tablename__ = "user_weather"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    temperature: Mapped[float] = mapped_column(Float, nullable=True)
+    humidity: Mapped[float] = mapped_column(Float, nullable=True)
+    condition: Mapped[str] = mapped_column(String(100), nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Опціонально: зв'язок з таблицею користувачів
+    user = relationship("User", back_populates="weather_records")
+
+    def __repr__(self) -> str:
+        return (
+            f"<UserWeather(user_id={self.user_id}, "
+            f"temperature={self.temperature}, "
+            f"condition={self.condition}, "
+            f"recorded_at={self.recorded_at})>"
+        )

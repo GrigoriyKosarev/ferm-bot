@@ -14,9 +14,11 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from core.keyboards.reply import get_main_menu, get_back_button
-from core.keyboards.inline import get_categories_keyboard
 from core.database.database import AsyncSessionLocal
 from core.database.queries import create_or_update_user, get_cart_summary
+from core.services.weather.service import weather_service
+from core.database.queries_weather import get_user_location
+
 
 # Створення роутера для цього модуля
 router = Router(name="start")
@@ -142,66 +144,91 @@ async def cmd_help(message: Message):
 
 @router.message(F.text == "🛒 Каталог товарів")
 async def show_catalog(message: Message):
-    """
-    Відображення каталогу товарів
+    """Відображення каталогу товарів"""
+    from core.database.queries import get_root_categories
 
-    Показує категорії товарів (Насіння, Добрива, ЗЗР)
-    """
-    catalog_text = (
-        "<b>🛒 Каталог товарів FERM</b>\n\n"
-        "Оберіть категорію для перегляду товарів:\n\n"
-        "🌾 <b>Насіння</b> - високоякісні сорти для всіх культур\n"
-        "🧪 <b>Добрива</b> - ефективне живлення рослин\n"
-        "🛡 <b>ЗЗР</b> - надійний захист від шкідників та хвороб\n"
-        "🔥 <b>Акції</b> - вигідні пропозиції цього місяця"
-    )
+    async with AsyncSessionLocal() as session:
+        categories = await get_root_categories(session)
 
-    await message.answer(
-        catalog_text,
-        reply_markup=get_categories_keyboard()
-    )
+        if not categories:
+            await message.answer(
+                "😔 <b>Каталог порожній</b>\n\n"
+                "База даних ще не заповнена."
+            )
+            return
+
+        from core.keyboards.inline import get_categories_keyboard_from_db
+
+        text = (
+            "<b>🛒 Каталог товарів FERM</b>\n\n"
+            "Оберіть категорію для перегляду товарів:"
+        )
+
+        await message.answer(
+            text,
+            reply_markup=get_categories_keyboard_from_db(categories)
+        )
 
 
 # ============= КНОПКА "АГРОПОГОДА" =============
 
 @router.message(F.text == "🌤 АгроПогода")
 async def show_weather_menu(message: Message):
+    """Меню АгроПогоди:
+    - Якщо є збережена локація → показуємо фактичну погоду
+    - Якщо немає → просимо користувача ввести місто
     """
-    Меню АгроПогоди
 
-    Якщо локація збережена - показує погоду
-    Якщо ні - пропонує ввести місто
-    """
+    user_id = message.from_user.id
+
     async with AsyncSessionLocal() as session:
-        from core.database.queries import get_user
-        user = await get_user(session, message.from_user.id)
+        user_location = await get_user_location(session, user_id)
 
-        if user and user.saved_location:
-            # Користувач вже вказував локацію
-            weather_text = (
-                f"<b>🌤 АгроПогода для {user.saved_location}</b>\n\n"
-                f"<i>Завантаження даних...</i>\n\n"
-                f"Скоро тут з'явиться:\n"
-                f"• ☀️ Поточна погода\n"
-                f"• 📅 Прогноз на 5 днів\n"
-                f"• 🌾 Агрорекомендації на день\n"
-                f"• 📊 Графіки температури та опадів\n\n"
-                f"<i>Розділ в розробці. Потребує API ключ AccuWeather.</i>"
-            )
-        else:
-            # Нова локація
-            weather_text = (
-                "<b>🌤 АгроПогода</b>\n\n"
-                "Для отримання прогнозу погоди та агрорекомендацій,\n"
-                "будь ласка, вкажіть ваше місто.\n\n"
-                "📍 <b>Надішліть назву міста</b>\n"
-                "<i>Наприклад: Київ, Львів, Одеса</i>\n\n"
-                "Після збереження локації ви зможете:\n"
-                "• Отримувати щоденні прогнози\n"
-                "• Бачити рекомендації для робіт\n"
-                "• Підписатися на сповіщення\n\n"
-                "<i>Розділ в розробці. Потребує API ключ AccuWeather.</i>"
-            )
+    # Локація НЕ ЗАДАНА — просимо користувача ввести місто
+    if not user_location or not user_location.saved_location:
+        text = (
+            "<b>🌤 АгроПогода</b>\n\n"
+            "📍 Ви ще не вказали локацію.\n"
+            "Будь ласка, введіть назву вашого міста:\n\n"
+            "Наприклад: <i>Київ, Львів, Полтава, Харків</i>\n\n"
+            "Після цього бот буде показувати прогноз *та агрорекомендації*."
+        )
+        return await message.answer(text)
+
+    # Якщо локація ВЖЕ є — показуємо погоду
+    city = user_location.saved_location
+    lat = user_location.latitude
+    lon = user_location.longitude
+    loc_key = user_location.location_key
+
+    try:
+        weather = await weather_service.get_weather(lat, lon, loc_key)
+        forecast = await weather_service.get_forecast(lat, lon, loc_key)
+        agro = weather_service.get_agro_recommendation(weather)
+    except Exception as e:
+        return await message.answer(
+            "⚠️ Не вдалося отримати прогноз погоди. "
+            "Можливо, проблеми з API AccuWeather."
+        )
+
+    # Формуємо текст відповіді
+    weather_text = (
+        f"<b>🌤 Погода для {city}</b>\n\n"
+        f"{weather['emoji']} <b>{weather['temp']}°C</b>\n"
+        f"Вологість: {weather['humidity']}%\n"
+        f"Опади: {weather['precip']} мм\n"
+        f"Вітер: {weather['wind']} м/с\n\n"
+        f"<b>🌾 Агрорекомендація:</b>\n"
+        f"{agro}\n\n"
+        f"<b>📅 Прогноз на 3 дні:</b>\n"
+    )
+
+    for day in forecast[:3]:
+        weather_text += (
+            f"{day['emoji']} <b>{day['day']}</b>\n"
+            f"{day['min']}° / {day['max']}°\n"
+            f"Опади: {day['precip']} мм\n\n"
+        )
 
     await message.answer(weather_text)
 

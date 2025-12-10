@@ -13,13 +13,15 @@ from loguru import logger
 
 from core.config import settings
 from core.database.database import init_db, close_db
+from core.services.weather.scheduler import start_daily_scheduler
 
 # Імпорт всіх роутерів (handlers)
 from core.handlers import (
     start,
-    # catalog,
+    catalog,
+    weather as weather_handlers,
+    weather_callbacks,
     # cart,
-    # weather,
     # grants,
     # consultation
 )
@@ -46,6 +48,8 @@ logger.add(
     format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function} - {message}"
 )
 
+scheduler_stop_event: asyncio.Event | None = None
+scheduler_task: asyncio.Task | None = None
 
 # ============= ІНІЦІАЛІЗАЦІЯ БОТА =============
 
@@ -56,6 +60,8 @@ async def on_startup(bot: Bot):
     - Ініціалізація бази даних
     - Повідомлення адміну про запуск (опціонально)
     """
+    global scheduler_stop_event, scheduler_task
+
     logger.info("🚀 Запуск FERM Telegram Bot...")
 
     # Ініціалізація БД
@@ -64,6 +70,11 @@ async def on_startup(bot: Bot):
     except Exception as e:
         logger.error(f"Помилка ініціалізації БД: {e}")
         raise
+
+    scheduler_stop_event = asyncio.Event()
+    scheduler_task = asyncio.create_task(
+        start_daily_scheduler(bot, scheduler_stop_event)
+    )
 
     # Отримати інформацію про бота
     bot_info = await bot.get_me()
@@ -81,6 +92,13 @@ async def on_shutdown(bot: Bot):
     - Повідомлення адміну (опціонально)
     """
     logger.info("🛑 Зупинка бота...")
+
+    # Stop scheduler
+    if scheduler_stop_event:
+        scheduler_stop_event.set()
+
+    if scheduler_task:
+        await scheduler_task
 
     await close_db()
 
@@ -118,8 +136,9 @@ async def main():
 
     dp.include_router(start.router)  # Команди /start, /help, головне меню
     dp.include_router(catalog.router)  # Каталог товарів, категорії, підкатегорії
+    dp.include_router(weather_handlers.router) # АгроПогода, підписки
+    dp.include_router(weather_callbacks.router)
     # dp.include_router(cart.router)  # Кошик, додавання/видалення товарів
-    # dp.include_router(weather.router)  # АгроПогода, підписки
     # dp.include_router(grants.router)  # АгроГранти, заявки
     # dp.include_router(consultation.router)  # ШІ-консультації
 
