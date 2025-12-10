@@ -143,6 +143,11 @@ def get_products_keyboard_from_db(
         callback_data=f"category:{category_id}"
     )
 
+    builder.button(
+        text="◀️ Назад до категорій",
+        callback_data="back:categories"
+    )
+
     builder.adjust(1)  # По 1 товару в ряд
     return builder.as_markup()
 
@@ -449,7 +454,7 @@ def get_equipment_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="🚜 Каталог техніки",
+        text="🚜 Оренда техніки",
         callback_data="equipment:catalog"
     )
 
