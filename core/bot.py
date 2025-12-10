@@ -13,7 +13,7 @@ from loguru import logger
 
 from core.config import settings
 from core.database.database import init_db, close_db
-from core.services.weather.scheduler import start_daily_scheduler
+# from core.services.weather.scheduler import start_daily_scheduler
 
 # Імпорт всіх роутерів (handlers)
 from core.handlers import (
@@ -71,10 +71,10 @@ async def on_startup(bot: Bot):
         logger.error(f"Помилка ініціалізації БД: {e}")
         raise
 
-    scheduler_stop_event = asyncio.Event()
-    scheduler_task = asyncio.create_task(
-        start_daily_scheduler(bot, scheduler_stop_event)
-    )
+    # scheduler_stop_event = asyncio.Event()
+    # scheduler_task = asyncio.create_task(
+    #     start_daily_scheduler(bot, scheduler_stop_event)
+    # )
 
     # Отримати інформацію про бота
     bot_info = await bot.get_me()
@@ -136,8 +136,8 @@ async def main():
 
     dp.include_router(start.router)  # Команди /start, /help, головне меню
     dp.include_router(catalog.router)  # Каталог товарів, категорії, підкатегорії
-    dp.include_router(weather_handlers.router) # АгроПогода, підписки
-    dp.include_router(weather_callbacks.router)
+    # dp.include_router(weather_handlers.router) # АгроПогода, підписки
+    # dp.include_router(weather_callbacks.router)
     # dp.include_router(cart.router)  # Кошик, додавання/видалення товарів
     # dp.include_router(grants.router)  # АгроГранти, заявки
     # dp.include_router(consultation.router)  # ШІ-консультації

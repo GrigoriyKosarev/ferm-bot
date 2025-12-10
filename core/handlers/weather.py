@@ -2,7 +2,7 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 from core.services.weather.service import weather_service
-from core.database.queries_weather import save_user_location, get_user_location, set_weather_subscription, get_subscribed_users
+# from core.database.queries_weather import save_user_location, get_user_location, set_weather_subscription, get_subscribed_users
 from core.services.weather.recommendations import _emoji_for_condition
 from core.config import settings
 

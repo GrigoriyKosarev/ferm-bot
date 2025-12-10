@@ -301,23 +301,23 @@ class Product(Base):
     def __repr__(self) -> str:
         return f"<Product(id={self.id} name={self.name} price={self.price})>"
 
-class UserWeather(Base):
-    __tablename__ = "user_weather"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    temperature: Mapped[float] = mapped_column(Float, nullable=True)
-    humidity: Mapped[float] = mapped_column(Float, nullable=True)
-    condition: Mapped[str] = mapped_column(String(100), nullable=True)
-    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    # Опціонально: зв'язок з таблицею користувачів
-    user = relationship("User", back_populates="weather_records")
-
-    def __repr__(self) -> str:
-        return (
-            f"<UserWeather(user_id={self.user_id}, "
-            f"temperature={self.temperature}, "
-            f"condition={self.condition}, "
-            f"recorded_at={self.recorded_at})>"
-        )
+# class UserWeather(Base):
+#     __tablename__ = "user_weather"
+#
+#     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+#     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+#     temperature: Mapped[float] = mapped_column(Float, nullable=True)
+#     humidity: Mapped[float] = mapped_column(Float, nullable=True)
+#     condition: Mapped[str] = mapped_column(String(100), nullable=True)
+#     recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+#
+#     # Опціонально: зв'язок з таблицею користувачів
+#     user = relationship("User", back_populates="weather_records")
+#
+#     def __repr__(self) -> str:
+#         return (
+#             f"<UserWeather(user_id={self.user_id}, "
+#             f"temperature={self.temperature}, "
+#             f"condition={self.condition}, "
+#             f"recorded_at={self.recorded_at})>"
+#         )

@@ -16,8 +16,8 @@ from loguru import logger
 from core.keyboards.reply import get_main_menu, get_back_button
 from core.database.database import AsyncSessionLocal
 from core.database.queries import create_or_update_user, get_cart_summary
-from core.services.weather.service import weather_service
-from core.database.queries_weather import get_user_location
+# from core.services.weather.service import weather_service
+# from core.database.queries_weather import get_user_location
 
 
 # Створення роутера для цього модуля
