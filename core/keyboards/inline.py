@@ -16,63 +16,66 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def get_categories_keyboard_from_db(categories: List) -> InlineKeyboardMarkup:
     """
-    Клавіатура з головними категоріями з БД
+    Клавіатура головних категорій з БД
 
     Args:
-        categories: List[Category] з бази даних
+        categories: Список об'єктів Category з БД
 
     Returns:
-        InlineKeyboardMarkup: Кнопки категорій
+        InlineKeyboardMarkup: Категорії товарів
     """
     builder = InlineKeyboardBuilder()
 
     for category in categories:
-        # Емодзі для категорій
-        emoji_map = {
-            "Добрива": "🧪",
-            "Засоби захисту рослин (ЗЗР)": "🛡",
-            "Насіння": "🌾"
-        }
-        emoji = emoji_map.get(category.name, "📦")
+        # Додаємо емодзі якщо є в назві, інакше додаємо 📁
+        icon = "📁" if not any(char in category.name for char in "🌾🧪🛡💰🔥") else ""
+        button_text = f"{icon} {category.name}" if icon else category.name
 
         builder.button(
-            text=f"{emoji} {category.name}",
+            text=button_text,
             callback_data=f"category:{category.id}"
         )
 
-    builder.adjust(1)  # По 1 кнопці в ряд
+    # По 2 кнопки в ряд
+    builder.adjust(2)
+
     return builder.as_markup()
+
 
 def get_subcategories_keyboard_from_db(
         subcategories: List,
         parent_id: int
 ) -> InlineKeyboardMarkup:
     """
-    Клавіатура з підкатегоріями
+    Клавіатура підкатегорій з БД
+    ВИПРАВЛЕНА ВЕРСІЯ з правильним callback "Назад"
 
     Args:
-        subcategories: List[Category] підкатегорії
+        subcategories: Список підкатегорій
         parent_id: ID батьківської категорії
 
     Returns:
-        InlineKeyboardMarkup: Кнопки підкатегорій
+        InlineKeyboardMarkup: Підкатегорії + кнопка "Назад"
     """
     builder = InlineKeyboardBuilder()
 
     for subcat in subcategories:
         builder.button(
             text=subcat.name,
-            callback_data=f"products:{subcat.id}:1"
+            callback_data=f"category:{subcat.id}"
         )
 
-    # Кнопка назад
+    # ВАЖЛИВО: Кнопка назад до головних категорій
     builder.button(
         text="◀️ Назад до категорій",
-        callback_data="back_to_catalog"
+        callback_data="back:categories"  # ✅ Правильний callback!
     )
 
-    builder.adjust(2)  # По 2 кнопки в ряд
+    # По 2 підкатегорії в ряд, "Назад" окремо
+    builder.adjust(2, 2, 2, 1)
+
     return builder.as_markup()
+
 
 def get_products_keyboard_from_db(
         products: List,
@@ -81,35 +84,30 @@ def get_products_keyboard_from_db(
         total_pages: int = 1
 ) -> InlineKeyboardMarkup:
     """
-    Клавіатура зі списком товарів
+    Клавіатура зі списком товарів з БД
 
-    Args:
-        products: List[Product] товари
-        category_id: ID категорії
-        page: Поточна сторінка
-        total_pages: Загальна кількість сторінок
-
-    Returns:
-        InlineKeyboardMarkup: Кнопки товарів + пагінація
+    ВИПРАВЛЕНО: правильна передача category_id в callback
     """
     builder = InlineKeyboardBuilder()
 
-    # Кнопки товарів
-    for product in products:
-        # Показуємо ціну якщо є
-        price_text = f" | {product.price} грн" if product.price else ""
-        button_text = f"{product.name[:35]}...{price_text}" if len(product.name) > 35 else f"{product.name}{price_text}"
+    # Кнопки товарів з нумерацією
+    for idx, product in enumerate(products, start=1):
+        availability_icon = "✅" if product.available else "❌"
+        price_text = f"{product.price} грн" if product.price else "?"
+
+        # Додаємо номер спереду
+        button_text = f"{idx}. {product.name} | {price_text} {availability_icon}"
 
         builder.button(
             text=button_text,
             callback_data=f"product:{product.id}"
         )
 
-    # Пагінація
+    # Пагінація (якщо більше 1 сторінки)
     if total_pages > 1:
         pagination_buttons = []
 
-        # Попередня сторінка
+        # Кнопка "Попередня"
         if page > 1:
             pagination_buttons.append(
                 InlineKeyboardButton(
@@ -118,7 +116,7 @@ def get_products_keyboard_from_db(
                 )
             )
 
-        # Поточна сторінка
+        # Поточна сторінка (не клікабельна)
         pagination_buttons.append(
             InlineKeyboardButton(
                 text=f"📄 {page}/{total_pages}",
@@ -126,7 +124,7 @@ def get_products_keyboard_from_db(
             )
         )
 
-        # Наступна сторінка
+        # Кнопка "Наступна"
         if page < total_pages:
             pagination_buttons.append(
                 InlineKeyboardButton(
@@ -137,19 +135,20 @@ def get_products_keyboard_from_db(
 
         builder.row(*pagination_buttons)
 
-    # Кнопка назад до категорій
-    builder.button(
-        text="◀️ Назад",
-        callback_data=f"category:{category_id}"
-    )
+    # ВИПРАВЛЕНО: передаємо саме category_id, не f-string в f-string!
+    # БУЛО (НЕПРАВИЛЬНО): callback_data=f"back:subcategories:{category_id}"
+    # Де category_id було як {category_id} - це створювало літерал "{category_id}"
 
     builder.button(
-        text="◀️ Назад до категорій",
-        callback_data="back:categories"
+        text="◀️ Назад до підкатегорій",
+        callback_data=f"back:subcategories:{category_id}"  # ✅ Правильно
     )
 
-    builder.adjust(1)  # По 1 товару в ряд
+    # По 1 товару в ряд
+    builder.adjust(1, repeat=True)
+
     return builder.as_markup()
+
 
 def get_product_actions_keyboard(
         product_id: int,
@@ -159,13 +158,7 @@ def get_product_actions_keyboard(
     """
     Клавіатура дій з товаром
 
-    Args:
-        product_id: ID товару
-        category_id: ID категорії товару
-        in_cart: Чи товар вже в кошику
-
-    Returns:
-        InlineKeyboardMarkup: Кнопки дій
+    ВИПРАВЛЕНО: правильна передача ID
     """
     builder = InlineKeyboardBuilder()
 
@@ -187,15 +180,70 @@ def get_product_actions_keyboard(
         url=f"https://ferm.in.ua/product/{product_id}"
     )
 
-    # Кнопка назад до списку товарів
+    # Додаткові дії
     builder.button(
-        text="◀️ Назад до товарів",
-        callback_data=f"products:{category_id}:1"
+        text="📊 Розрахувати норму",
+        callback_data=f"calculate:{product_id}"
     )
 
-    builder.adjust(1)  # По 1 кнопці в ряд
+    builder.button(
+        text="💡 Підібрати супутні",
+        callback_data=f"related:{product_id}"
+    )
+
+    # Консультація з ШІ
+    builder.button(
+        text="🤖 Консультація з ШІ",
+        callback_data=f"ai_consult:{product_id}"
+    )
+
+    # ВИПРАВЛЕНО: правильний формат callback
+    builder.button(
+        text="◀️ Назад до товарів",
+        callback_data=f"back:products:{category_id}:1"  # ✅ Правильно
+    )
+
+    # Розміщення: 1, 2, 1, 1, 1
+    builder.adjust(1, 2, 1, 1, 1, 1)
+
     return builder.as_markup()
 
+
+# ============= ДОДАТКОВІ КЛАВІАТУРИ =============
+
+def get_cart_view_keyboard() -> InlineKeyboardMarkup:
+    """
+    Клавіатура для перегляду кошика з каталогу
+    """
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="🛍 Переглянути кошик",
+        callback_data="view_cart"
+    )
+
+    builder.button(
+        text="🛒 Продовжити покупки",
+        callback_data="back:categories"
+    )
+
+    builder.adjust(1)
+
+    return builder.as_markup()
+
+
+def get_error_keyboard() -> InlineKeyboardMarkup:
+    """
+    Клавіатура для відображення при помилках
+    """
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="◀️ Повернутися до каталогу",
+        callback_data="back:categories"
+    )
+
+    return builder.as_markup()
 
 # ============= КОШИК =============
 
