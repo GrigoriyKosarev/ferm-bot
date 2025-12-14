@@ -31,6 +31,7 @@ apscheduler = "^3.10.4"
 # Логування
 loguru = "^0.7.2"
 asyncpg = "^0.31.0"
+logger = "^1.4"
 
 [tool.poetry.group.dev.dependencies]
 # Форматування та лінтинг

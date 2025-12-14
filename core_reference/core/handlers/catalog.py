@@ -365,3 +365,241 @@ async def back_to_category(callback: CallbackQuery):
 async def back_to_catalog(callback: CallbackQuery):
     """Повернутися до головних категорій"""
     await show_catalog(callback)
+
+
+# ============= ВИПРАВЛЕНА НАВІГАЦІЯ "НАЗАД" =============
+
+@router.callback_query(F.data == "back:categories")
+async def back_to_categories_handler(callback: CallbackQuery, state: FSMContext = None):
+    """
+    Повернення до головних категорій
+
+    ВИПРАВЛЕНО: state тепер опціональний
+    """
+    if state:
+        await state.clear()
+
+    async with AsyncSessionLocal() as session:
+        categories = await get_root_categories(session)
+
+        if not categories:
+            await callback.message.edit_text(
+                "😔 <b>Категорії не знайдені</b>\n\nБаза даних порожня."
+            )
+            await callback.answer()
+            return
+
+        text = (
+            "<b>🛒 Каталог товарів FERM</b>\n\n"
+            "Оберіть категорію для перегляду товарів:"
+        )
+
+        # ВИПРАВЛЕНО: перевірка чи можна редагувати повідомлення
+        try:
+            if callback.message.photo:
+                await callback.message.delete()
+                await callback.message.answer(
+                    text,
+                    reply_markup=get_categories_keyboard_from_db(categories)
+                )
+            else:
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=get_categories_keyboard_from_db(categories)
+                )
+        except Exception as e:
+            logger.error(f"Помилка редагування повідомлення: {e}")
+            await callback.message.answer(
+                text,
+                reply_markup=get_categories_keyboard_from_db(categories)
+            )
+
+    await callback.answer()
+    logger.debug(f"Користувач {callback.from_user.id} повернувся до категорій")
+
+@router.callback_query(F.data.startswith("back:subcategories:"))
+async def back_to_subcategories_handler(callback: CallbackQuery):
+    """
+    Повернення до підкатегорій батьківської категорії
+
+    ВИПРАВЛЕНО: правильне отримання category_id з callback
+    """
+    try:
+        parts = callback.data.split(":")
+        if len(parts) < 3:
+            await callback.answer("❌ Невірний формат", show_alert=True)
+            logger.error(f"Невірний формат callback: {callback.data}")
+            return
+
+        # ВИПРАВЛЕНО: перевірка що parts[2] - це число
+        try:
+            category_id = int(parts[2])
+        except ValueError:
+            logger.error(f"Не можу перетворити на int: {parts[2]} з callback: {callback.data}")
+            await callback.answer("❌ Помилка формату", show_alert=True)
+            return
+
+        async with AsyncSessionLocal() as session:
+            # Отримати поточну категорію
+            current_category = await get_category_by_id(session, category_id)
+
+            if not current_category:
+                await callback.answer("❌ Категорія не знайдена", show_alert=True)
+                logger.warning(f"Категорія {category_id} не знайдена")
+                return
+
+            logger.debug(
+                f"Поточна категорія: {current_category.name} (ID={current_category.id}, parent_id={current_category.parent_id})")
+
+            # Якщо є батьківська категорія - показати її підкатегорії
+            if current_category.parent_id:
+                parent = await get_category_by_id(session, current_category.parent_id)
+                subcategories = await get_subcategories(session, current_category.parent_id)
+
+                if parent and subcategories:
+                    text = f"<b>{parent.name}</b>\n\nОберіть підкатегорію:"
+
+                    await callback.message.edit_text(
+                        text,
+                        reply_markup=get_subcategories_keyboard_from_db(
+                            subcategories,
+                            parent_id=current_category.parent_id
+                        )
+                    )
+                    await callback.answer()
+                    logger.info(f"Користувач {callback.from_user.id} повернувся до підкатегорій {parent.name}")
+                    return
+
+            # Якщо немає батьківської - до головних категорій
+            logger.debug(f"У категорії {current_category.name} немає parent_id, повертаємось до головних")
+            from aiogram.fsm.context import FSMContext
+            fake_state = FSMContext(
+                storage=None,
+                key=None
+            )
+            await back_to_categories_handler(callback, fake_state)
+
+    except Exception as e:
+        logger.error(f"Помилка повернення до підкатегорій: {e}", exc_info=True)
+        await callback.answer("❌ Помилка навігації", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("back:products:"))
+async def back_to_products_handler(callback: CallbackQuery):
+    """
+    Повернення до списку товарів
+
+    ВИПРАВЛЕНО: перевірка типу повідомлення перед edit
+    """
+    try:
+        parts = callback.data.split(":")
+        if len(parts) < 3:
+            await callback.answer("❌ Невірний формат", show_alert=True)
+            return
+
+        category_id = int(parts[2])
+        page = int(parts[3]) if len(parts) > 3 else 1
+
+        logger.debug(f"Повернення до товарів категорії {category_id}, сторінка {page}")
+
+        # ВИПРАВЛЕНО: якщо це фото - видаляємо його спочатку
+        if callback.message.photo:
+            logger.debug("Видаляємо повідомлення з фото перед показом списку товарів")
+            await callback.message.delete()
+
+            # Отримуємо список товарів і відправляємо нове повідомлення
+            async with AsyncSessionLocal() as session:
+                category = await get_category_by_id(session, category_id)
+
+                if not category:
+                    await callback.answer("❌ Категорія не знайдена", show_alert=True)
+                    return
+
+                from math import ceil
+
+                # Підрахунок сторінок
+                total_products = await get_products_count_by_category(session, category_id)
+                total_pages = ceil(total_products / PRODUCTS_PER_PAGE) if total_products > 0 else 1
+
+                # Отримати товари
+                offset = (page - 1) * PRODUCTS_PER_PAGE
+                products = await get_products_by_category(
+                    session,
+                    category_id,
+                    limit=PRODUCTS_PER_PAGE,
+                    offset=offset
+                )
+
+                if not products:
+                    await callback.message.answer("😔 Товари не знайдені")
+                    await callback.answer()
+                    return
+
+                # Breadcrumbs
+                path = await get_category_path(session, category_id)
+                breadcrumbs = " → ".join([c.name for c in path])
+
+                # Формування списку
+                text = f"<b>📦 {breadcrumbs}</b>\n\n"
+
+                for idx, product in enumerate(products, start=1):
+                    availability = "✅" if product.available else "❌"
+                    price_text = f"{product.price} грн" if product.price else "Ціна не вказана"
+                    text += f"{idx}. <b>{product.name}</b>\n   💰 {price_text} | {availability}\n\n"
+
+                text += f"━━━━━━━━━━━━━━━━━\n"
+                text += f"<i>Сторінка {page}/{total_pages} • Всього товарів: {total_products}</i>"
+
+                # Відправити нове повідомлення
+                await callback.message.answer(
+                    text,
+                    reply_markup=get_products_keyboard_from_db(
+                        products=products,
+                        category_id=category_id,
+                        page=page,
+                        total_pages=total_pages
+                    )
+                )
+                await callback.answer()
+        else:
+            # Якщо текстове повідомлення - можна просто edit
+            await show_products_in_category(callback, category_id, page)
+
+    except Exception as e:
+        logger.error(f"Помилка повернення до товарів: {e}", exc_info=True)
+        await callback.answer("❌ Помилка завантаження", show_alert=True)
+
+
+@router.callback_query(F.data == "back_to_catalog")
+async def back_to_catalog_universal(callback: CallbackQuery, state: FSMContext):
+    """
+    Універсальне повернення до каталогу
+    Підтримує як back_to_catalog так і back:categories
+    """
+    await back_to_categories_handler(callback, state)
+
+@router.callback_query(F.data == "current_page")
+async def handle_current_page_click(callback: CallbackQuery):
+    """Індикатор поточної сторінки"""
+    await callback.answer("ℹ️ Це індикатор поточної сторінки", show_alert=False)
+
+
+# ============= ДОДАТКОВИЙ ОБРОБНИК ДЛЯ СУМІСНОСТІ =============
+
+@router.callback_query(F.data.startswith("back_to_category:"))
+async def back_to_category_compat(callback: CallbackQuery):
+    """
+    Сумісність зі старою версією callback
+    back_to_category:{category_id} -> category:{category_id}
+    """
+    category_id = int(callback.data.split(":")[1])
+
+    fake_callback = CallbackQuery(
+        id=callback.id,
+        from_user=callback.from_user,
+        message=callback.message,
+        data=f"category:{category_id}",
+        chat_instance=callback.chat_instance
+    )
+
+    await show_subcategories(fake_callback)
