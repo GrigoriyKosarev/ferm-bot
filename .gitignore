@@ -28,7 +28,7 @@ ENV/
 .venv
 
 # Poetry
-poetry.lock
+# poetry.lock НЕ в gitignore - він потрібен в Git для однакових версій пакетів!
 
 # Database
 *.db
