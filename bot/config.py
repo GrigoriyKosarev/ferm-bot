@@ -128,6 +128,27 @@ class Settings(BaseSettings):
         LOG_TO_FILE=True
     """
 
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{PROJECT_ROOT}/ferm_bot.db"
+    """
+    URL для підключення до бази даних (КРОК 4)
+
+    Тип: str
+    За замовчуванням: SQLite файл у корені проекту
+
+    Формат:
+    - SQLite: sqlite+aiosqlite:///path/to/database.db
+    - PostgreSQL: postgresql+asyncpg://user:password@localhost/dbname
+
+    Приклад в .env:
+        DATABASE_URL=sqlite+aiosqlite:///ferm_bot.db
+        # або
+        DATABASE_URL=postgresql+asyncpg://user:pass@localhost/ferm_bot
+
+    Що означають частини:
+    - sqlite+aiosqlite:// - тип БД + async драйвер
+    - ///path/to/db - шлях до файлу БД (3 слеші для абсолютного шляху)
+    """
+
     # ========================================
     # КОНФІГУРАЦІЯ PYDANTIC
     # ========================================
