@@ -68,7 +68,6 @@ class Settings(BaseSettings):
     "Field required [type=missing, input_value={}, input_type=dict]"
 
     Приклад в .env:
-        BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
     """
 
     # ========================================
