@@ -1,0 +1,108 @@
+from aiogram import Router, F
+from aiogram.filters import CommandStart
+from aiogram.types import Message
+
+from bot.database import get_session
+from bot.logger import logger
+from bot.models import User
+
+from bot.keyboards import reply, inline
+
+
+router = Router(name="start")
+
+@router.message(CommandStart())
+async def cmd_start(message: Message):
+    """
+    Функція, яка викликається коли користувач відправляє /start
+
+    Параметри:
+    - message: об'єкт повідомлення від користувача
+
+    Що робить:
+    - Отримує ім'я користувача (якщо є)
+    - КРОК 4: Зберігає/оновлює користувача в БД
+    - Відправляє привітальне повідомлення
+    - Логує інформацію про користувача
+    """
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name or "друже"
+
+    # КРОК 3: Логуємо що користувач запустив бота
+    logger.info(f"👤 Користувач {user_name} (ID: {user_id}) відправив /start")
+
+    # ========================================
+    # КРОК 4: Робота з базою даних
+    # ========================================
+    async with get_session() as session:
+        # Перевіряємо чи є користувач в БД
+        user = await session.get(User, user_id)
+
+        if user:
+            # Користувач вже є - оновлюємо дані
+            logger.info(f"📝 Оновлюю дані користувача {user_id}")
+            user.username = message.from_user.username
+            user.first_name = message.from_user.first_name
+            user.last_name = message.from_user.last_name
+            is_new_user = False
+        else:
+            # Новий користувач - створюємо запис
+            logger.info(f"➕ Створюю нового користувача {user_id}")
+            user = User(
+                telegram_id=user_id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+            )
+            session.add(user)
+            is_new_user = True
+
+        # Зберігаємо зміни в БД
+        await session.commit()
+
+    # Формуємо текст відповіді
+    if is_new_user:
+        text = (
+            f"Привіт, {user_name}! 👋\n\n"
+            f"Ти вперше запустив бота!\n"
+            f"Я зберіг твої дані в базі даних."
+        )
+    else:
+        text = (
+            f"З поверненням, {user_name}! 👋\n\n"
+            f"Я оновив твої дані в базі даних."
+        )
+
+    # Відправляємо відповідь користувачу
+    await message.answer(text, reply_markup=reply.get_main_menu())
+    # await message.answer(text)
+
+    # КРОК 3: Логуємо що відповідь надіслано
+    logger.debug(f"✉️  Відповідь на /start надіслано користувачу {user_id}")
+
+@router.message(F.text == "📦 Каталог")
+async def show_catalog(message: Message):
+    """Відображення каталогу товарів"""
+    from core.database.queries import get_root_categories
+
+    async with AsyncSessionLocal() as session:
+        categories = await get_root_categories(session)
+
+        if not categories:
+            await message.answer(
+                "😔 <b>Каталог порожній</b>\n\n"
+                "База даних ще не заповнена."
+            )
+            return
+
+        from core.keyboards.inline import get_categories_keyboard_from_db
+
+        text = (
+            "<b>🛒 Каталог товарів FERM</b>\n\n"
+            "Оберіть категорію для перегляду товарів:"
+        )
+
+        await message.answer(
+            text,
+            reply_markup=get_categories_keyboard_from_db(categories)
+        )
