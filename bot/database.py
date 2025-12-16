@@ -37,7 +37,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
 
 from bot.config import settings
 from bot.logger import logger
@@ -46,18 +45,9 @@ from bot.logger import logger
 # ========================================
 # БАЗОВИЙ КЛАС ДЛЯ МОДЕЛЕЙ
 # ========================================
-class Base(DeclarativeBase):
-    """
-    Базовий клас для всіх моделей БД
-
-    Всі моделі (User, Product, Order, тощо) наслідуються від цього класу
-
-    Що дає DeclarativeBase:
-    - Автоматичне створення таблиць
-    - Методи для роботи з БД (query, add, delete)
-    - Відстеження змін в об'єктах
-    """
-    pass
+# КРОК 6: Використовуємо Base з core/database/models.py
+# Це дозволяє мати всі моделі (User, Category, Product тощо) в одному місці
+from core.database.models import Base
 
 
 # ========================================
