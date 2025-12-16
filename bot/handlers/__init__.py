@@ -1,7 +1,11 @@
 """
 Обробники подій (handlers)
 
-Тут розміщуються обробники команд та повідомлень
+Експортуємо роутери для підключення до диспетчера
 """
 
-__all__ = []
+from bot.handlers.start import router as start_router
+
+__all__ = [
+    "start_router",
+]
