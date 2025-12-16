@@ -41,7 +41,7 @@ from bot.logger import logger
 # КРОК 4: Імпортуємо БД
 from bot.database import init_db, close_db, get_session
 
-from handlers import start
+from handlers import start_router, menu_router
 
 # ========================================
 # КРОК 2: Токен тепер з .env файлу!
