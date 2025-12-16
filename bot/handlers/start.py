@@ -90,13 +90,13 @@ async def cmd_start(message: Message):
 @router.message(F.text == "📦 Каталог")
 async def show_catalog(message: Message):
     """Відображення каталогу товарів"""
-    from core.database.queries import get_root_categories
-    from core.database.database import AsyncSessionLocal
-    from core.keyboards.inline import get_categories_keyboard_from_db
+    from bot.queries import get_root_categories
+    from bot.database import get_session
+    from bot.keyboards.inline import get_categories_keyboard_from_db
 
     logger.info(f"Користувач {message.from_user.id} відкрив каталог")
 
-    async with AsyncSessionLocal() as session:
+    async with get_session() as session:
         categories = await get_root_categories(session)
 
         if not categories:

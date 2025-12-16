@@ -35,3 +35,47 @@ def get_info_keyboard() -> InlineKeyboardMarkup:
     builder.adjust(2, 1)
 
     return builder.as_markup()
+
+
+def get_categories_keyboard_from_db(categories: list) -> InlineKeyboardMarkup:
+    """
+    КРОК 6: Inline клавіатура головних категорій з БД
+
+    Args:
+        categories: Список об'єктів Category з БД
+
+    Returns:
+        InlineKeyboardMarkup: Категорії товарів
+    """
+    builder = InlineKeyboardBuilder()
+
+    for category in categories:
+        # Додаємо емодзі для кращого вигляду
+        icon_map = {
+            "Добрива": "🧪",
+            "Засоби захисту рослин": "🛡",
+            "ЗЗР": "🛡",
+            "Насіння": "🌾",
+        }
+
+        # Шукаємо емодзі для категорії
+        icon = ""
+        for key, emoji in icon_map.items():
+            if key in category.name:
+                icon = emoji
+                break
+
+        if not icon:
+            icon = "📁"  # За замовчуванням
+
+        button_text = f"{icon} {category.name}"
+
+        builder.button(
+            text=button_text,
+            callback_data=f"category:{category.id}"
+        )
+
+    # По 2 кнопки в ряд
+    builder.adjust(2)
+
+    return builder.as_markup()

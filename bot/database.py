@@ -45,9 +45,18 @@ from bot.logger import logger
 # ========================================
 # БАЗОВИЙ КЛАС ДЛЯ МОДЕЛЕЙ
 # ========================================
-# КРОК 6: Використовуємо Base з core/database/models.py
-# Це дозволяє мати всі моделі (User, Category, Product тощо) в одному місці
-from core.database.models import Base
+# КРОК 6: Базовий клас для всіх моделей
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    """
+    Базовий клас для всіх моделей БД
+
+    Всі моделі (User, Category, Product) наслідуються від цього класу
+    DeclarativeBase автоматично створює таблиці та відстежує зміни
+    """
+    pass
 
 
 # ========================================
@@ -144,6 +153,115 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
     logger.info("✅ База даних готова до роботи!")
+
+    # КРОК 6: Додаємо тестові дані якщо БД порожня
+    await seed_data()
+
+
+# ========================================
+# SEED-ДАНІ (тестові категорії та товари)
+# ========================================
+async def seed_data() -> None:
+    """
+    Додає тестові дані в БД (категорії та товари)
+
+    Викликається автоматично після init_db()
+    Якщо дані вже є - нічого не робить
+    """
+    if async_session_maker is None:
+        return
+
+    from bot.models import Category, Product
+    from sqlalchemy import select
+
+    async with async_session_maker() as session:
+        # Перевіряємо чи є вже категорії
+        result = await session.execute(select(Category))
+        exists = result.scalars().first()
+
+        if exists:
+            logger.debug("Seed-дані вже є в БД")
+            return
+
+        logger.info("📝 Додаю тестові категорії та товари...")
+
+        # ========================================
+        # КАТЕГОРІЇ (3-рівнева ієрархія)
+        # ========================================
+        categories = []
+
+        # Рівень 1: Головні категорії
+        cat_fertilizers = Category(name="Добрива")
+        cat_protection = Category(name="Засоби захисту рослин (ЗЗР)")
+        cat_seeds = Category(name="Насіння")
+        categories.extend([cat_fertilizers, cat_protection, cat_seeds])
+
+        session.add_all(categories)
+        await session.flush()  # Отримуємо ID для parent
+
+        # Рівень 2: Підкатегорії Добрив
+        cat_micro = Category(name="Мікродобрива", parent_id=cat_fertilizers.id)
+        cat_organic = Category(name="Органічні добрива", parent_id=cat_fertilizers.id)
+        cat_mineral = Category(name="Основні мінеральні добрива", parent_id=cat_fertilizers.id)
+
+        # Рівень 2: Підкатегорії ЗЗР
+        cat_inoculants = Category(name="Інокулянти", parent_id=cat_protection.id)
+        cat_bio = Category(name="Біопрепарати", parent_id=cat_protection.id)
+        cat_insecticides = Category(name="Інсектициди", parent_id=cat_protection.id)
+        cat_adjuvants = Category(name="Ад'юванти", parent_id=cat_protection.id)
+        cat_herbicides = Category(name="Гербіциди", parent_id=cat_protection.id)
+        cat_fungicides = Category(name="Фунгіциди", parent_id=cat_protection.id)
+
+        # Рівень 2: Підкатегорії Насіння
+        cat_legumes = Category(name="Бобові", parent_id=cat_seeds.id)
+        cat_cereals = Category(name="Зернові", parent_id=cat_seeds.id)
+        cat_oilseeds = Category(name="Олійні", parent_id=cat_seeds.id)
+
+        subcategories = [
+            cat_micro, cat_organic, cat_mineral,
+            cat_inoculants, cat_bio, cat_insecticides, cat_adjuvants, cat_herbicides, cat_fungicides,
+            cat_legumes, cat_cereals, cat_oilseeds,
+        ]
+        session.add_all(subcategories)
+        await session.flush()
+
+        # ========================================
+        # ТОВАРИ (тестові мікродобрива)
+        # ========================================
+        products = [
+            Product(
+                name="Мікродобриво UltraStart марка А, 20 кг",
+                description="Мікрогранульоване стартове добриво для локального внесення. "
+                           "Забезпечує культури збалансованим живленням з першого дня.",
+                price=2320.00,
+                image_url="https://ferm.in.ua/getimage/products/au3l-a2kasi_5r1(1).webp",
+                category_id=cat_micro.id,
+                available=True,
+            ),
+            Product(
+                name="Мікродобриво Інтермаг Олійні, 20 л",
+                description="Рідке мікродобриво для позакореневого підживлення соняшника, "
+                           "ріпаку, гірчиці, льону та інших олійних культур.",
+                price=3950.00,
+                image_url="https://ferm.in.ua/getimage/products/lb89ubuyxb4pqmn(1).webp",
+                category_id=cat_micro.id,
+                available=True,
+            ),
+            Product(
+                name="Мікродобриво Avangard Crystalmax B-21, 10 кг",
+                description="Водорозчинне мікродобриво з високим вмістом бору (20,8%). "
+                           "Спеціально розроблене для підживлення соняшника.",
+                price=1950.00,
+                image_url="https://ferm.in.ua/getimage/products/xiql7fcsy1x2zqb(1).webp",
+                category_id=cat_micro.id,
+                available=True,
+            ),
+        ]
+
+        session.add_all(products)
+        await session.commit()
+
+        logger.info(f"✅ Додано {len(categories) + len(subcategories)} категорій та {len(products)} товарів")
 
 
 # ========================================
