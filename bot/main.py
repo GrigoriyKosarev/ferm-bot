@@ -39,11 +39,9 @@ from bot.config import settings
 from bot.logger import logger
 
 # КРОК 4: Імпортуємо БД
-from bot.database import init_db, close_db
+from bot.database import init_db, close_db, get_session
 
-# КРОК 5: Імпортуємо роутери
-from bot.handlers import start_router, menu_router
-
+from handlers import start
 
 # ========================================
 # КРОК 2: Токен тепер з .env файлу!
@@ -66,9 +64,6 @@ from bot.handlers import start_router, menu_router
 # ========================================
 # КРОК 5: Обробники винесено в окремі модулі
 # ========================================
-# Обробник /start тепер в bot/handlers/start.py
-# Обробники меню тепер в bot/handlers/menu.py
-# Використовуємо Router для модульної організації
 
 
 # ========================================
@@ -101,11 +96,9 @@ async def main():
     logger.info("📦 Створюю диспетчер...")
     dp = Dispatcher()
 
-    # КРОК 5: Підключаємо роутери
-    logger.info("🔧 Підключаю роутери...")
-    dp.include_router(start_router)
-    dp.include_router(menu_router)
-    logger.info("✅ Роутери підключено: start, menu")
+    # Крок 3: Реєстрація обробника /start
+    logger.info("🔧 Реєструю обробник /start...")
+    dp.include_router(start.router)
 
     # Крок 4: Видалення webhook (якщо був)
     logger.info("🧹 Очищаю webhook...")
