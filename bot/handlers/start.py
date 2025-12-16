@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message
+from sqlalchemy import select
 
 from bot.database import get_session
 from bot.logger import logger
@@ -32,11 +33,16 @@ async def cmd_start(message: Message):
     logger.info(f"👤 Користувач {user_name} (ID: {user_id}) відправив /start")
 
     # ========================================
-    # КРОК 4: Робота з базою даних
+    # КРОК 6: Робота з базою даних (оновлено для core/database)
     # ========================================
     async with get_session() as session:
-        # Перевіряємо чи є користувач в БД
-        user = await session.get(User, user_id)
+        # Шукаємо користувача по user_id (telegram_id)
+        # ВАЖЛИВО: session.get() працює тільки з PRIMARY KEY (id)
+        # Тому використовуємо select() з фільтром по user_id
+        result = await session.execute(
+            select(User).where(User.user_id == user_id)
+        )
+        user = result.scalar_one_or_none()
 
         if user:
             # Користувач вже є - оновлюємо дані
@@ -49,7 +55,7 @@ async def cmd_start(message: Message):
             # Новий користувач - створюємо запис
             logger.info(f"➕ Створюю нового користувача {user_id}")
             user = User(
-                telegram_id=user_id,
+                user_id=user_id,  # КРОК 6: Поле тепер називається user_id
                 username=message.from_user.username,
                 first_name=message.from_user.first_name,
                 last_name=message.from_user.last_name,
