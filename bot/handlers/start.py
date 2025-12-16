@@ -80,29 +80,29 @@ async def cmd_start(message: Message):
     # КРОК 3: Логуємо що відповідь надіслано
     logger.debug(f"✉️  Відповідь на /start надіслано користувачу {user_id}")
 
-@router.message(F.text == "📦 Каталог")
-async def show_catalog(message: Message):
-    """Відображення каталогу товарів"""
-    from core.database.queries import get_root_categories
-
-    async with AsyncSessionLocal() as session:
-        categories = await get_root_categories(session)
-
-        if not categories:
-            await message.answer(
-                "😔 <b>Каталог порожній</b>\n\n"
-                "База даних ще не заповнена."
-            )
-            return
-
-        from core.keyboards.inline import get_categories_keyboard_from_db
-
-        text = (
-            "<b>🛒 Каталог товарів FERM</b>\n\n"
-            "Оберіть категорію для перегляду товарів:"
-        )
-
-        await message.answer(
-            text,
-            reply_markup=get_categories_keyboard_from_db(categories)
-        )
+# @router.message(F.text == "📦 Каталог")
+# async def show_catalog(message: Message):
+#     """Відображення каталогу товарів"""
+#     from core.database.queries import get_root_categories
+#
+#     async with AsyncSessionLocal() as session:
+#         categories = await get_root_categories(session)
+#
+#         if not categories:
+#             await message.answer(
+#                 "😔 <b>Каталог порожній</b>\n\n"
+#                 "База даних ще не заповнена."
+#             )
+#             return
+#
+#         from core.keyboards.inline import get_categories_keyboard_from_db
+#
+#         text = (
+#             "<b>🛒 Каталог товарів FERM</b>\n\n"
+#             "Оберіть категорію для перегляду товарів:"
+#         )
+#
+#         await message.answer(
+#             text,
+#             reply_markup=get_categories_keyboard_from_db(categories)
+#         )

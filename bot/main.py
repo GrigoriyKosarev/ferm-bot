@@ -98,7 +98,8 @@ async def main():
 
     # Крок 3: Реєстрація обробника /start
     logger.info("🔧 Реєструю обробник /start...")
-    dp.include_router(start.router)
+    dp.include_router(start_router)
+    dp.include_router(menu_router)
 
     # Крок 4: Видалення webhook (якщо був)
     logger.info("🧹 Очищаю webhook...")
