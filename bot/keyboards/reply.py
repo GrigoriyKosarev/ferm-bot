@@ -27,8 +27,6 @@ def get_main_menu() -> ReplyKeyboardMarkup:
     # Додаємо кнопки
     builder.button(text="📦 Каталог")
     builder.button(text="🛒 Кошик")
-    builder.button(text="ℹ️ Інформація")
-    builder.button(text="⚙️ Налаштування")
 
     # Розміщення: 2 кнопки в ряд
     builder.adjust(2)

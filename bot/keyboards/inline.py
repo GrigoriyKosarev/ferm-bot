@@ -307,6 +307,13 @@ def get_cart_keyboard(cart_items: list) -> InlineKeyboardMarkup:
         )
 
     # Кнопки внизу
+    # Кнопка оформлення замовлення (відкриває сайт)
+    builder.row(
+        InlineKeyboardButton(
+            text="✅ Оформити замовлення",
+            url="https://ferm.in.ua/checkout.php"
+        )
+    )
     builder.row(
         InlineKeyboardButton(
             text="🗑 Очистити кошик",
