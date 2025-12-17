@@ -199,3 +199,67 @@ def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int
     )
 
     return builder.as_markup()
+
+
+def get_cart_keyboard(cart_items: list) -> InlineKeyboardMarkup:
+    """
+    Inline клавіатура для перегляду кошика
+
+    Args:
+        cart_items: Список об'єктів CartItem з БД
+
+    Returns:
+        InlineKeyboardMarkup: Товари в кошику з кнопками управління
+    """
+    builder = InlineKeyboardBuilder()
+
+    if not cart_items:
+        # Кошик порожній - тільки кнопка "Назад"
+        builder.row(
+            InlineKeyboardButton(
+                text="🏠 Головне меню",
+                callback_data="cart_close"
+            )
+        )
+        return builder.as_markup()
+
+    # Кнопки для кожного товару в кошику
+    for item in cart_items:
+        # Рядок 1: Назва товару та кнопки управління
+        builder.row(
+            InlineKeyboardButton(
+                text=f"🗑 {item.product.name}",
+                callback_data=f"cart_remove:{item.product_id}"
+            )
+        )
+        # Рядок 2: Управління кількістю
+        builder.row(
+            InlineKeyboardButton(
+                text="➖",
+                callback_data=f"cart_qty:{item.product_id}:{item.quantity}:dec"
+            ),
+            InlineKeyboardButton(
+                text=f"{item.quantity} шт",
+                callback_data="ignore"
+            ),
+            InlineKeyboardButton(
+                text="➕",
+                callback_data=f"cart_qty:{item.product_id}:{item.quantity}:inc"
+            )
+        )
+
+    # Кнопки внизу
+    builder.row(
+        InlineKeyboardButton(
+            text="🗑 Очистити кошик",
+            callback_data="cart_clear"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🏠 Головне меню",
+            callback_data="cart_close"
+        )
+    )
+
+    return builder.as_markup()
