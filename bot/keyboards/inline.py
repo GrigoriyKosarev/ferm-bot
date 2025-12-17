@@ -140,3 +140,52 @@ def get_products_keyboard(products: list, category_parent_id: int = None) -> Inl
         )
 
     return builder.as_markup()
+
+
+def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int = 1) -> InlineKeyboardMarkup:
+    """
+    Inline клавіатура для детальної картки товару
+
+    Args:
+        product_id: ID товару
+        category_id: ID категорії (для кнопки "Назад")
+        quantity: Поточна кількість товару (за замовчуванням 1)
+
+    Returns:
+        InlineKeyboardMarkup: Клавіатура з управлінням кількості та кнопкою "Додати в кошик"
+    """
+    builder = InlineKeyboardBuilder()
+
+    # Рядок 1: Управління кількістю
+    builder.row(
+        InlineKeyboardButton(
+            text="➖",
+            callback_data=f"product_qty:{product_id}:{quantity}:dec"
+        ),
+        InlineKeyboardButton(
+            text=f"📦 {quantity} шт",
+            callback_data="ignore"  # Кнопка не клікабельна (показує кількість)
+        ),
+        InlineKeyboardButton(
+            text="➕",
+            callback_data=f"product_qty:{product_id}:{quantity}:inc"
+        )
+    )
+
+    # Рядок 2: Додати в кошик
+    builder.row(
+        InlineKeyboardButton(
+            text=f"🛒 Додати в кошик ({quantity} шт)",
+            callback_data=f"add_to_cart:{product_id}:{quantity}"
+        )
+    )
+
+    # Рядок 3: Назад до категорії
+    builder.row(
+        InlineKeyboardButton(
+            text="⬅️ Назад до списку",
+            callback_data=f"category:{category_id}"
+        )
+    )
+
+    return builder.as_markup()
