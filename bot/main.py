@@ -41,6 +41,7 @@ from bot.logger import logger
 
 # КРОК 4: Імпортуємо БД
 from bot.database import init_db, close_db, get_session
+from bot.middlewares import PhoneCheckMiddleware
 
 from handlers import start_router, menu_router, catalog_router
 
@@ -97,6 +98,12 @@ async def main():
     logger.info("📦 Створюю диспетчер...")
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
+
+    # Крок 2.5: Підключення middleware
+    logger.info("🔒 Підключаю middleware перевірки номера телефону...")
+    dp.message.middleware(PhoneCheckMiddleware())
+    dp.callback_query.middleware(PhoneCheckMiddleware())
+    logger.info("✅ Middleware підключено")
 
     # Крок 3: Реєстрація обробників
     logger.info("🔧 Реєструю обробники...")
