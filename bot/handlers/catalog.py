@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery
 
 from bot.database import get_session
 from bot.queries import get_subcategories, get_category_by_id, get_products_by_category
-from bot.keyboards.inline import get_categories_keyboard_from_db
+from bot.keyboards.inline import get_categories_keyboard_from_db, get_products_keyboard
 
 router = Router(name="catalog")
 
@@ -73,21 +73,27 @@ async def callback_category(callback: CallbackQuery):
             if products:
                 text = f"📦 <b>{category.name}</b>\n\n"
                 text += f"Знайдено товарів: {len(products)}\n\n"
+                text += "Оберіть товар для перегляду деталей:"
 
-                for product in products:
-                    text += f"• <b>{product.name}</b>\n"
-                    if product.price:
-                        text += f"  Ціна: {product.price} грн\n"
-                    if product.description:
-                        text += f"  {product.description[:50]}...\n"
-                    text += "\n"
+                # Клавіатура з товарами та кнопкою "Назад"
+                keyboard = get_products_keyboard(products, category_parent_id=category.parent_id)
 
-                # TODO: Додати клавіатуру з товарами та кнопкою "Назад"
-                await callback.message.edit_text(text, parse_mode="HTML")
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
             else:
                 text = f"📦 <b>{category.name}</b>\n\n"
                 text += "У цій категорії поки немає товарів."
 
-                await callback.message.edit_text(text, parse_mode="HTML")
+                # Клавіатура тільки з кнопкою "Назад"
+                keyboard = get_products_keyboard([], category_parent_id=category.parent_id)
+
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
 
     await callback.answer()
