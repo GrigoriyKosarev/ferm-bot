@@ -307,11 +307,11 @@ def get_cart_keyboard(cart_items: list) -> InlineKeyboardMarkup:
         )
 
     # Кнопки внизу
-    # Якщо є товари - показуємо кнопку оформлення
+    # Кнопка оформлення замовлення (відкриває сайт)
     builder.row(
         InlineKeyboardButton(
             text="✅ Оформити замовлення",
-            callback_data="cart_checkout"
+            url="https://ferm.in.ua/checkout.php"
         )
     )
     builder.row(
