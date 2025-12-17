@@ -2,14 +2,16 @@
 Обробники для роботи з каталогом товарів
 """
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
+from aiogram.fsm.context import FSMContext
 
 from bot.database import get_session
 from bot.queries import (
     get_subcategories, get_category_by_id, get_products_by_category, get_product_by_id,
-    add_to_cart
+    add_to_cart, search_products, count_search_results, count_products_by_category
 )
 from bot.keyboards.inline import get_categories_keyboard_from_db, get_products_keyboard, get_product_detail_keyboard
+from bot.states import SearchStates
 
 router = Router(name="catalog")
 
@@ -27,7 +29,7 @@ async def callback_back_to_menu(callback: CallbackQuery):
         text = "📦 <b>Каталог товарів</b>\n\n"
         text += "Оберіть категорію для перегляду товарів:"
 
-        keyboard = get_categories_keyboard_from_db(categories)
+        keyboard = get_categories_keyboard_from_db(categories, show_search=True)
 
         # Перевіряємо чи це фото-повідомлення
         if callback.message.photo:
@@ -97,15 +99,25 @@ async def callback_category(callback: CallbackQuery):
                 )
         else:
             # Немає підкатегорій - показуємо товари
-            products = await get_products_by_category(session, category_id, limit=10)
+            limit = 10
+            offset = 0
+            products = await get_products_by_category(session, category_id, limit=limit, offset=offset)
+            total_count = await count_products_by_category(session, category_id)
 
             if products:
                 text = f"📦 <b>{category.name}</b>\n\n"
-                text += f"Знайдено товарів: {len(products)}\n\n"
+                text += f"Знайдено товарів: {total_count}\n\n"
                 text += "Оберіть товар для перегляду деталей:"
 
-                # Клавіатура з товарами та кнопкою "Назад"
-                keyboard = get_products_keyboard(products, category_parent_id=category.parent_id)
+                # Клавіатура з товарами, пагінацією та кнопкою "Назад"
+                keyboard = get_products_keyboard(
+                    products,
+                    category_parent_id=category.parent_id,
+                    category_id=category_id,
+                    offset=offset,
+                    limit=limit,
+                    total_count=total_count
+                )
 
                 # Перевіряємо чи це фото-повідомлення
                 if callback.message.photo:
@@ -293,3 +305,137 @@ async def callback_ignore(callback: CallbackQuery):
     Обробник для неклікабельних кнопок (показ кількості)
     """
     await callback.answer()
+
+
+# ========================================
+# ПАГІНАЦІЯ ТОВАРІВ
+# ========================================
+
+@router.callback_query(F.data.startswith("page:"))
+async def callback_pagination(callback: CallbackQuery):
+    """
+    Обробник пагінації товарів - перехід між сторінками
+
+    Формат callback_data: "page:category_id:offset"
+    """
+    # Розбираємо callback_data
+    parts = callback.data.split(":")
+    category_id = int(parts[1])
+    offset = int(parts[2])
+    limit = 10
+
+    async with get_session() as session:
+        # Отримуємо категорію та товари
+        category = await get_category_by_id(session, category_id)
+
+        if not category:
+            await callback.answer("❌ Категорію не знайдено", show_alert=True)
+            return
+
+        products = await get_products_by_category(session, category_id, limit=limit, offset=offset)
+        total_count = await count_products_by_category(session, category_id)
+
+        if not products:
+            await callback.answer("❌ Товари не знайдено", show_alert=True)
+            return
+
+        # Формуємо текст
+        text = f"📦 <b>{category.name}</b>\n\n"
+        text += f"Знайдено товарів: {total_count}\n\n"
+        text += "Оберіть товар для перегляду деталей:"
+
+        # Створюємо клавіатуру з пагінацією
+        keyboard = get_products_keyboard(
+            products,
+            category_parent_id=category.parent_id,
+            category_id=category_id,
+            offset=offset,
+            limit=limit,
+            total_count=total_count
+        )
+
+        # Оновлюємо повідомлення
+        await callback.message.edit_text(
+            text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+
+    await callback.answer()
+
+
+# ========================================
+# ПОШУК ТОВАРІВ
+# ========================================
+
+@router.callback_query(F.data == "search_start")
+async def callback_search_start(callback: CallbackQuery, state: FSMContext):
+    """
+    Початок пошуку товарів - запит на введення пошукового запиту
+    """
+    await state.set_state(SearchStates.waiting_for_query)
+
+    await callback.message.edit_text(
+        "🔍 <b>Пошук товарів</b>\n\n"
+        "Введіть назву або опис товару для пошуку:\n\n"
+        "Наприклад: <code>добриво</code>, <code>насіння</code>, <code>захист</code>\n\n"
+        "Для скасування натисніть /start",
+        parse_mode="HTML"
+    )
+
+    await callback.answer()
+
+
+@router.message(SearchStates.waiting_for_query)
+async def process_search_query(message: Message, state: FSMContext):
+    """
+    Обробка пошукового запиту від користувача
+    """
+    query = message.text.strip()
+
+    # Перевірка на команди
+    if query.startswith("/"):
+        await state.clear()
+        return
+
+    # Мінімальна довжина запиту
+    if len(query) < 2:
+        await message.answer(
+            "❌ Занадто короткий запит.\n"
+            "Введіть мінімум 2 символи для пошуку."
+        )
+        return
+
+    async with get_session() as session:
+        # Пошук товарів
+        products = await search_products(session, query, limit=20)
+        total_count = await count_search_results(session, query)
+
+        if not products:
+            text = (
+                f"🔍 <b>Результати пошуку</b>\n\n"
+                f"За запитом <b>«{query}»</b> нічого не знайдено.\n\n"
+                f"Спробуйте змінити запит або перегляньте каталог."
+            )
+
+            from bot.queries import get_root_categories
+            categories = await get_root_categories(session)
+            keyboard = get_categories_keyboard_from_db(categories, show_search=True)
+
+            await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        else:
+            # Формуємо список знайдених товарів
+            text = f"🔍 <b>Результати пошуку</b>\n\n"
+            text += f"За запитом <b>«{query}»</b> знайдено: <b>{total_count}</b> товарів\n\n"
+
+            if total_count > 20:
+                text += f"<i>Показано перші 20 результатів</i>\n\n"
+
+            # Створюємо клавіатуру з товарами
+            # Використовуємо category_parent_id=None щоб показати кнопку "До меню"
+            keyboard = get_products_keyboard(products, category_parent_id=None)
+
+            await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
+    # Очищаємо стан FSM
+    await state.clear()

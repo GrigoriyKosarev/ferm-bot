@@ -113,6 +113,6 @@ async def show_catalog(message: Message):
 
         await message.answer(
             text,
-            reply_markup=get_categories_keyboard_from_db(categories),
+            reply_markup=get_categories_keyboard_from_db(categories, show_search=True),
             parse_mode="HTML"
         )
