@@ -5,7 +5,10 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
 from bot.database import get_session
-from bot.queries import get_subcategories, get_category_by_id, get_products_by_category, get_product_by_id
+from bot.queries import (
+    get_subcategories, get_category_by_id, get_products_by_category, get_product_by_id,
+    add_to_cart
+)
 from bot.keyboards.inline import get_categories_keyboard_from_db, get_products_keyboard, get_product_detail_keyboard
 
 router = Router(name="catalog")
@@ -256,13 +259,13 @@ async def callback_product_qty(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("add_to_cart:"))
 async def callback_add_to_cart(callback: CallbackQuery):
     """
-    Додає товар в кошик
-    TODO: Поки що просто показує повідомлення, реальний кошик буде пізніше
+    Додає товар в кошик (реальне збереження в БД)
     """
     # Формат: "add_to_cart:123:5"
     parts = callback.data.split(":")
     product_id = int(parts[1])
     quantity = int(parts[2])
+    user_id = callback.from_user.id
 
     async with get_session() as session:
         product = await get_product_by_id(session, product_id)
@@ -271,11 +274,14 @@ async def callback_add_to_cart(callback: CallbackQuery):
             await callback.answer("❌ Товар не знайдено", show_alert=True)
             return
 
+        # Додаємо товар в кошик (або оновлюємо кількість)
+        cart_item = await add_to_cart(session, user_id, product_id, quantity)
+
         # Показуємо повідомлення про успішне додавання
-        message = f"✅ Додано до кошика:\n{product.name}\nКількість: {quantity} шт"
+        message = f"✅ Додано до кошика:\n{product.name}\nКількість: {cart_item.quantity} шт"
 
         if product.price:
-            total = product.price * quantity
+            total = product.price * cart_item.quantity
             message += f"\nВартість: {total:.2f} грн"
 
         await callback.answer(message, show_alert=True)

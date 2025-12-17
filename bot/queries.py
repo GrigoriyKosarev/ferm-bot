@@ -9,7 +9,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.models import Category, Product
+from bot.models import Category, Product, CartItem
 
 
 # ============= КАТЕГОРІЇ =============
@@ -117,3 +117,161 @@ async def get_product_by_id(
     stmt = select(Product).where(Product.id == product_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+# ============= КОШИК =============
+
+async def add_to_cart(
+        session: AsyncSession,
+        user_id: int,
+        product_id: int,
+        quantity: int = 1
+) -> CartItem:
+    """
+    Додати товар в кошик або оновити кількість якщо вже є
+
+    Args:
+        user_id: Telegram ID користувача
+        product_id: ID товару
+        quantity: Кількість для додавання
+
+    Returns:
+        CartItem: Елемент кошика
+    """
+    # Перевіряємо чи товар вже є в кошику
+    stmt = (
+        select(CartItem)
+        .where(CartItem.user_id == user_id)
+        .where(CartItem.product_id == product_id)
+    )
+    result = await session.execute(stmt)
+    cart_item = result.scalar_one_or_none()
+
+    if cart_item:
+        # Товар вже є - збільшуємо кількість
+        cart_item.quantity += quantity
+    else:
+        # Нового товару немає - створюємо
+        cart_item = CartItem(
+            user_id=user_id,
+            product_id=product_id,
+            quantity=quantity
+        )
+        session.add(cart_item)
+
+    await session.commit()
+    await session.refresh(cart_item)
+    return cart_item
+
+
+async def get_cart(
+        session: AsyncSession,
+        user_id: int
+) -> List[CartItem]:
+    """
+    Отримати всі товари з кошика користувача
+
+    Args:
+        user_id: Telegram ID користувача
+
+    Returns:
+        List[CartItem]: Список товарів в кошику
+    """
+    stmt = (
+        select(CartItem)
+        .where(CartItem.user_id == user_id)
+        .order_by(CartItem.created_at)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def remove_from_cart(
+        session: AsyncSession,
+        user_id: int,
+        product_id: int
+) -> bool:
+    """
+    Видалити товар з кошика
+
+    Args:
+        user_id: Telegram ID користувача
+        product_id: ID товару
+
+    Returns:
+        bool: True якщо видалено, False якщо товару не було
+    """
+    stmt = (
+        select(CartItem)
+        .where(CartItem.user_id == user_id)
+        .where(CartItem.product_id == product_id)
+    )
+    result = await session.execute(stmt)
+    cart_item = result.scalar_one_or_none()
+
+    if cart_item:
+        await session.delete(cart_item)
+        await session.commit()
+        return True
+    return False
+
+
+async def clear_cart(
+        session: AsyncSession,
+        user_id: int
+) -> int:
+    """
+    Очистити весь кошик користувача
+
+    Args:
+        user_id: Telegram ID користувача
+
+    Returns:
+        int: Кількість видалених товарів
+    """
+    stmt = select(CartItem).where(CartItem.user_id == user_id)
+    result = await session.execute(stmt)
+    cart_items = result.scalars().all()
+
+    count = len(list(cart_items))
+    for item in cart_items:
+        await session.delete(item)
+
+    await session.commit()
+    return count
+
+
+async def update_cart_quantity(
+        session: AsyncSession,
+        user_id: int,
+        product_id: int,
+        quantity: int
+) -> Optional[CartItem]:
+    """
+    Оновити кількість товару в кошику
+
+    Args:
+        user_id: Telegram ID користувача
+        product_id: ID товару
+        quantity: Нова кількість
+
+    Returns:
+        CartItem або None якщо товару немає в кошику
+    """
+    stmt = (
+        select(CartItem)
+        .where(CartItem.user_id == user_id)
+        .where(CartItem.product_id == product_id)
+    )
+    result = await session.execute(stmt)
+    cart_item = result.scalar_one_or_none()
+
+    if cart_item:
+        if quantity <= 0:
+            # Якщо кількість 0 або менше - видаляємо товар
+            await session.delete(cart_item)
+        else:
+            cart_item.quantity = quantity
+        await session.commit()
+        return cart_item if quantity > 0 else None
+    return None
