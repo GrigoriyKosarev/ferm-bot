@@ -77,6 +77,13 @@ class Product(Base):
         comment="URL товару на сайті магазину",
     )
 
+    # Норма застосування (кг/га)
+    application_rate: Mapped[Optional[float]] = mapped_column(
+        Float,
+        nullable=True,
+        comment="Норма застосування кг/га",
+    )
+
     # ========================================
     # FOREIGN KEYS
     # ========================================
