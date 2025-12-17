@@ -41,7 +41,7 @@ from bot.logger import logger
 # КРОК 4: Імпортуємо БД
 from bot.database import init_db, close_db, get_session
 
-from handlers import start_router, menu_router
+from handlers import start_router, menu_router, catalog_router
 
 # ========================================
 # КРОК 2: Токен тепер з .env файлу!
@@ -100,7 +100,8 @@ async def main():
     logger.info("🔧 Реєструю обробники...")
     dp.include_router(start_router)
     dp.include_router(menu_router)
-    logger.info("✅ Роутери підключено: start, menu")
+    dp.include_router(catalog_router)
+    logger.info("✅ Роутери підключено: start, menu, catalog")
 
     # Крок 4: Видалення webhook (якщо був)
     logger.info("🧹 Очищаю webhook...")

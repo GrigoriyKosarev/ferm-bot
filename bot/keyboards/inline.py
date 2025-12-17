@@ -37,15 +37,16 @@ def get_info_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_categories_keyboard_from_db(categories: list) -> InlineKeyboardMarkup:
+def get_categories_keyboard_from_db(categories: list, parent_id: int = None) -> InlineKeyboardMarkup:
     """
-    КРОК 6: Inline клавіатура головних категорій з БД
+    КРОК 6: Inline клавіатура категорій з БД
 
     Args:
         categories: Список об'єктів Category з БД
+        parent_id: ID батьківської категорії (для кнопки "Назад")
 
     Returns:
-        InlineKeyboardMarkup: Категорії товарів
+        InlineKeyboardMarkup: Категорії товарів з кнопкою "Назад"
     """
     builder = InlineKeyboardBuilder()
 
@@ -77,5 +78,22 @@ def get_categories_keyboard_from_db(categories: list) -> InlineKeyboardMarkup:
 
     # По 2 кнопки в ряд
     builder.adjust(2)
+
+    # Додаємо кнопку "Назад" якщо є батьківська категорія
+    if parent_id is not None:
+        builder.row(
+            InlineKeyboardButton(
+                text="⬅️ Назад",
+                callback_data=f"category:{parent_id}"
+            )
+        )
+    else:
+        # Якщо це головні категорії - кнопка "До меню"
+        builder.row(
+            InlineKeyboardButton(
+                text="🏠 До головного меню",
+                callback_data="back_to_menu"
+            )
+        )
 
     return builder.as_markup()
