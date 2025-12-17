@@ -59,6 +59,13 @@ class User(Base):
         comment="Прізвище користувача",
     )
 
+    # Телефон
+    phone_number: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Телефон",
+    )
+
     # Дата створення
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

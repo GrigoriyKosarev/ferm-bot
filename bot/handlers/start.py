@@ -8,6 +8,7 @@ from bot.logger import logger
 from bot.models import User
 
 from bot.keyboards import reply, inline
+from bot.keyboards.phone import get_phone_keyboard
 
 
 router = Router(name="start")
@@ -79,9 +80,20 @@ async def cmd_start(message: Message):
             f"Я оновив твої дані в базі даних."
         )
 
-    # Відправляємо відповідь користувачу
-    await message.answer(text, reply_markup=reply.get_main_menu())
-    # await message.answer(text)
+    need_phone = user.phone_number is None
+
+    if need_phone:
+        text = (
+            "\n\n🔔 Щоб продовжити необхідно поділитися номером телефону."
+        )
+
+        await message.answer(text, reply_markup=get_phone_keyboard())
+    else:
+        await message.answer(text, reply_markup=reply.get_main_menu())
+
+    # # Відправляємо відповідь користувачу
+    # await message.answer(text, reply_markup=reply.get_main_menu())
+    # # await message.answer(text)
 
     # КРОК 3: Логуємо що відповідь надіслано
     logger.debug(f"✉️  Відповідь на /start надіслано користувачу {user_id}")
@@ -116,3 +128,29 @@ async def show_catalog(message: Message):
             reply_markup=get_categories_keyboard_from_db(categories, show_search=True),
             parse_mode="HTML"
         )
+
+@router.message(F.contact)
+async def handle_contact(message: Message):
+    contact = message.contact
+
+    # 🔐 Захист
+    if contact.user_id != message.from_user.id:
+        await message.answer("❌ Будь ласка, поділіться СВОЇМ номером")
+        return
+
+    phone = contact.phone_number
+    user_id = message.from_user.id
+
+    async with get_session() as session:
+        result = await session.execute(
+            select(User).where(User.user_id == user_id)
+        )
+        user = result.scalar_one()
+
+        user.phone_number = phone
+        await session.commit()
+
+    await message.answer(
+        "✅ Дякую! Номер збережено.",
+        reply_markup=reply.get_main_menu()
+    )
