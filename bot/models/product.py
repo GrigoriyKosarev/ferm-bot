@@ -70,6 +70,13 @@ class Product(Base):
         comment="URL зображення товару",
     )
 
+    # URL товару на сайті
+    product_url: Mapped[Optional[str]] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="URL товару на сайті магазину",
+    )
+
     # ========================================
     # FOREIGN KEYS
     # ========================================
