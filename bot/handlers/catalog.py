@@ -26,11 +26,24 @@ async def callback_back_to_menu(callback: CallbackQuery):
 
         keyboard = get_categories_keyboard_from_db(categories)
 
-        await callback.message.edit_text(
-            text,
-            reply_markup=keyboard,
-            parse_mode="HTML"
-        )
+        # Перевіряємо чи це фото-повідомлення
+        if callback.message.photo:
+            # Якщо фото - видаляємо і створюємо нове
+            chat_id = callback.message.chat.id
+            await callback.message.delete()
+            await callback.bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
+        else:
+            # Якщо текст - редагуємо
+            await callback.message.edit_text(
+                text,
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
 
     await callback.answer()
 
@@ -61,11 +74,24 @@ async def callback_category(callback: CallbackQuery):
             # Передаємо parent_id для кнопки "Назад"
             keyboard = get_categories_keyboard_from_db(subcategories, parent_id=category.parent_id)
 
-            await callback.message.edit_text(
-                text,
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
+            # Перевіряємо чи це фото-повідомлення
+            if callback.message.photo:
+                # Якщо фото - видаляємо і створюємо нове
+                chat_id = callback.message.chat.id
+                await callback.message.delete()
+                await callback.bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+            else:
+                # Якщо текст - редагуємо
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
         else:
             # Немає підкатегорій - показуємо товари
             products = await get_products_by_category(session, category_id, limit=10)
@@ -78,11 +104,24 @@ async def callback_category(callback: CallbackQuery):
                 # Клавіатура з товарами та кнопкою "Назад"
                 keyboard = get_products_keyboard(products, category_parent_id=category.parent_id)
 
-                await callback.message.edit_text(
-                    text,
-                    reply_markup=keyboard,
-                    parse_mode="HTML"
-                )
+                # Перевіряємо чи це фото-повідомлення
+                if callback.message.photo:
+                    # Якщо фото - видаляємо і створюємо нове
+                    chat_id = callback.message.chat.id
+                    await callback.message.delete()
+                    await callback.bot.send_message(
+                        chat_id=chat_id,
+                        text=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                else:
+                    # Якщо текст - редагуємо
+                    await callback.message.edit_text(
+                        text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
             else:
                 text = f"📦 <b>{category.name}</b>\n\n"
                 text += "У цій категорії поки немає товарів."
@@ -90,11 +129,24 @@ async def callback_category(callback: CallbackQuery):
                 # Клавіатура тільки з кнопкою "Назад"
                 keyboard = get_products_keyboard([], category_parent_id=category.parent_id)
 
-                await callback.message.edit_text(
-                    text,
-                    reply_markup=keyboard,
-                    parse_mode="HTML"
-                )
+                # Перевіряємо чи це фото-повідомлення
+                if callback.message.photo:
+                    # Якщо фото - видаляємо і створюємо нове
+                    chat_id = callback.message.chat.id
+                    await callback.message.delete()
+                    await callback.bot.send_message(
+                        chat_id=chat_id,
+                        text=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                else:
+                    # Якщо текст - редагуємо
+                    await callback.message.edit_text(
+                        text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
 
     await callback.answer()
 
