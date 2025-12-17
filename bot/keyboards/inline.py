@@ -97,3 +97,46 @@ def get_categories_keyboard_from_db(categories: list, parent_id: int = None) -> 
         )
 
     return builder.as_markup()
+
+
+def get_products_keyboard(products: list, category_parent_id: int = None) -> InlineKeyboardMarkup:
+    """
+    Inline клавіатура для списку товарів категорії
+
+    Args:
+        products: Список об'єктів Product з БД
+        category_parent_id: ID батьківської категорії для кнопки "Назад"
+
+    Returns:
+        InlineKeyboardMarkup: Список товарів з кнопкою "Назад"
+    """
+    builder = InlineKeyboardBuilder()
+
+    # Кнопки товарів (поки просто показуємо список)
+    for product in products:
+        builder.button(
+            text=f"📦 {product.name}",
+            callback_data=f"product:{product.id}"
+        )
+
+    # По 1 товару в ряд (бо назви довгі)
+    builder.adjust(1)
+
+    # Додаємо кнопку "Назад" до батьківської категорії
+    if category_parent_id is not None:
+        builder.row(
+            InlineKeyboardButton(
+                text="⬅️ Назад",
+                callback_data=f"category:{category_parent_id}"
+            )
+        )
+    else:
+        # Якщо немає батька - до головного меню
+        builder.row(
+            InlineKeyboardButton(
+                text="🏠 До головного меню",
+                callback_data="back_to_menu"
+            )
+        )
+
+    return builder.as_markup()
