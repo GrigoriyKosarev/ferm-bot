@@ -181,7 +181,8 @@ async def callback_product(callback: CallbackQuery):
         keyboard = get_product_detail_keyboard(
             product_id=product.id,
             category_id=product.category_id,
-            quantity=1  # За замовчуванням 1
+            quantity=1,  # За замовчуванням 1
+            product_url=product.product_url  # URL товару на сайті
         )
 
         # Якщо є фото - показуємо з фото
@@ -238,7 +239,8 @@ async def callback_product_qty(callback: CallbackQuery):
         keyboard = get_product_detail_keyboard(
             product_id=product.id,
             category_id=product.category_id,
-            quantity=new_qty
+            quantity=new_qty,
+            product_url=product.product_url
         )
 
         # Оновлюємо клавіатуру (текст залишається той самий)
