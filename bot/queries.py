@@ -6,7 +6,7 @@ CRUD операції для Category та Product
 
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models import Category, Product, CartItem
@@ -117,6 +117,91 @@ async def get_product_by_id(
     stmt = select(Product).where(Product.id == product_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def search_products(
+        session: AsyncSession,
+        query: str,
+        limit: int = 10,
+        offset: int = 0
+) -> List[Product]:
+    """
+    Пошук товарів по назві та опису
+
+    Args:
+        query: Пошуковий запит
+        limit: Кількість товарів на сторінку
+        offset: Зміщення (для пагінації)
+
+    Returns:
+        List[Product]: Список знайдених товарів
+    """
+    search_pattern = f"%{query}%"
+    stmt = (
+        select(Product)
+        .where(Product.available == True)
+        .where(
+            or_(
+                Product.name.ilike(search_pattern),
+                Product.description.ilike(search_pattern)
+            )
+        )
+        .order_by(Product.name)
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def count_search_results(
+        session: AsyncSession,
+        query: str
+) -> int:
+    """
+    Підрахунок кількості результатів пошуку
+
+    Args:
+        query: Пошуковий запит
+
+    Returns:
+        int: Кількість знайдених товарів
+    """
+    search_pattern = f"%{query}%"
+    stmt = (
+        select(func.count(Product.id))
+        .where(Product.available == True)
+        .where(
+            or_(
+                Product.name.ilike(search_pattern),
+                Product.description.ilike(search_pattern)
+            )
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
+
+
+async def count_products_by_category(
+        session: AsyncSession,
+        category_id: int
+) -> int:
+    """
+    Підрахунок кількості товарів в категорії
+
+    Args:
+        category_id: ID категорії
+
+    Returns:
+        int: Кількість товарів
+    """
+    stmt = (
+        select(func.count(Product.id))
+        .where(Product.category_id == category_id)
+        .where(Product.available == True)
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
 
 
 # ============= КОШИК =============

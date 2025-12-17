@@ -37,13 +37,14 @@ def get_info_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_categories_keyboard_from_db(categories: list, parent_id: int = None) -> InlineKeyboardMarkup:
+def get_categories_keyboard_from_db(categories: list, parent_id: int = None, show_search: bool = False) -> InlineKeyboardMarkup:
     """
     КРОК 6: Inline клавіатура категорій з БД
 
     Args:
         categories: Список об'єктів Category з БД
         parent_id: ID батьківської категорії (для кнопки "Назад")
+        show_search: Показувати кнопку пошуку (тільки для головних категорій)
 
     Returns:
         InlineKeyboardMarkup: Категорії товарів з кнопкою "Назад"
@@ -88,7 +89,16 @@ def get_categories_keyboard_from_db(categories: list, parent_id: int = None) -> 
             )
         )
     else:
-        # Якщо це головні категорії - кнопка "До меню"
+        # Якщо це головні категорії - додаємо кнопку пошуку
+        if show_search:
+            builder.row(
+                InlineKeyboardButton(
+                    text="🔍 Пошук товарів",
+                    callback_data="search_start"
+                )
+            )
+
+        # Кнопка "До меню"
         builder.row(
             InlineKeyboardButton(
                 text="🏠 До головного меню",
@@ -99,20 +109,31 @@ def get_categories_keyboard_from_db(categories: list, parent_id: int = None) -> 
     return builder.as_markup()
 
 
-def get_products_keyboard(products: list, category_parent_id: int = None) -> InlineKeyboardMarkup:
+def get_products_keyboard(
+        products: list,
+        category_parent_id: int = None,
+        category_id: int = None,
+        offset: int = 0,
+        limit: int = 10,
+        total_count: int = 0
+) -> InlineKeyboardMarkup:
     """
-    Inline клавіатура для списку товарів категорії
+    Inline клавіатура для списку товарів категорії з пагінацією
 
     Args:
         products: Список об'єктів Product з БД
         category_parent_id: ID батьківської категорії для кнопки "Назад"
+        category_id: ID поточної категорії (для пагінації)
+        offset: Поточне зміщення (для пагінації)
+        limit: Кількість товарів на сторінку
+        total_count: Загальна кількість товарів в категорії
 
     Returns:
-        InlineKeyboardMarkup: Список товарів з кнопкою "Назад"
+        InlineKeyboardMarkup: Список товарів з кнопкою "Назад" та пагінацією
     """
     builder = InlineKeyboardBuilder()
 
-    # Кнопки товарів (поки просто показуємо список)
+    # Кнопки товарів
     for product in products:
         builder.button(
             text=f"📦 {product.name}",
@@ -121,6 +142,43 @@ def get_products_keyboard(products: list, category_parent_id: int = None) -> Inl
 
     # По 1 товару в ряд (бо назви довгі)
     builder.adjust(1)
+
+    # Додаємо кнопки пагінації якщо потрібно
+    if total_count > limit and category_id is not None:
+        pagination_buttons = []
+
+        # Кнопка "◀️ Попередня" якщо не на першій сторінці
+        if offset > 0:
+            prev_offset = max(0, offset - limit)
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text="◀️ Попередня",
+                    callback_data=f"page:{category_id}:{prev_offset}"
+                )
+            )
+
+        # Показуємо поточну сторінку
+        current_page = (offset // limit) + 1
+        total_pages = (total_count + limit - 1) // limit
+        pagination_buttons.append(
+            InlineKeyboardButton(
+                text=f"📄 {current_page}/{total_pages}",
+                callback_data="ignore"
+            )
+        )
+
+        # Кнопка "Наступна ▶️" якщо не на останній сторінці
+        if offset + limit < total_count:
+            next_offset = offset + limit
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text="Наступна ▶️",
+                    callback_data=f"page:{category_id}:{next_offset}"
+                )
+            )
+
+        # Додаємо рядок з пагінацією
+        builder.row(*pagination_buttons)
 
     # Додаємо кнопку "Назад" до батьківської категорії
     if category_parent_id is not None:

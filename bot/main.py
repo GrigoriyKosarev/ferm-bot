@@ -31,6 +31,7 @@
 
 import asyncio
 from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
 
 # КРОК 2: Імпортуємо налаштування
 from bot.config import settings
@@ -92,9 +93,10 @@ async def main():
     # КРОК 2: Використовуємо токен з config (з .env файлу)
     bot = Bot(token=settings.BOT_TOKEN)
 
-    # Крок 2: Створення диспетчера
+    # Крок 2: Створення диспетчера з FSM storage
     logger.info("📦 Створюю диспетчер...")
-    dp = Dispatcher()
+    storage = MemoryStorage()
+    dp = Dispatcher(storage=storage)
 
     # Крок 3: Реєстрація обробників
     logger.info("🔧 Реєструю обробники...")
