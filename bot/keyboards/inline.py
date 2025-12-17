@@ -307,6 +307,13 @@ def get_cart_keyboard(cart_items: list) -> InlineKeyboardMarkup:
         )
 
     # Кнопки внизу
+    # Якщо є товари - показуємо кнопку оформлення
+    builder.row(
+        InlineKeyboardButton(
+            text="✅ Оформити замовлення",
+            callback_data="cart_checkout"
+        )
+    )
     builder.row(
         InlineKeyboardButton(
             text="🗑 Очистити кошик",

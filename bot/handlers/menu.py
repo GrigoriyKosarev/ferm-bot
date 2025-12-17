@@ -8,12 +8,15 @@
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 
 from bot.database import get_session
 from bot.queries import get_cart, remove_from_cart, update_cart_quantity, clear_cart
-from bot.keyboards import get_info_keyboard
+from bot.keyboards import get_info_keyboard, reply
 from bot.keyboards.inline import get_cart_keyboard
 from bot.logger import logger
+from bot.states import OrderStates
+from bot.models import User
 
 # Створюємо Router для меню
 router = Router(name="menu")
@@ -258,3 +261,164 @@ async def callback_cart_close(callback: CallbackQuery):
     """Закриває кошик"""
     await callback.message.delete()
     await callback.answer()
+
+
+# ========================================
+# ОФОРМЛЕННЯ ЗАМОВЛЕННЯ
+# ========================================
+
+@router.callback_query(F.data == "cart_checkout")
+async def callback_cart_checkout(callback: CallbackQuery, state: FSMContext):
+    """
+    Початок оформлення замовлення
+    Запитує адресу доставки
+    """
+    user_id = callback.from_user.id
+    logger.info(f"Користувач {user_id} розпочав оформлення замовлення")
+
+    async with get_session() as session:
+        # Перевіряємо що кошик не порожній
+        cart_items = await get_cart(session, user_id)
+
+        if not cart_items:
+            await callback.answer("❌ Кошик порожній!", show_alert=True)
+            return
+
+        # Отримуємо дані користувача (номер телефону вже є завдяки middleware)
+        from sqlalchemy import select
+        result = await session.execute(
+            select(User).where(User.user_id == user_id)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user or not user.phone_number:
+            await callback.answer("❌ Помилка: дані користувача не знайдено", show_alert=True)
+            return
+
+        # Зберігаємо дані кошика в state
+        total_sum = sum(item.product.price * item.quantity for item in cart_items if item.product.price)
+
+        order_data = {
+            "cart_items": [(item.product.name, item.quantity, item.product.price) for item in cart_items],
+            "total_sum": total_sum,
+            "phone": user.phone_number,
+            "user_name": user.first_name or "Користувач"
+        }
+
+        await state.update_data(order_data)
+
+    # Переходимо в стан очікування адреси
+    await state.set_state(OrderStates.waiting_for_address)
+
+    await callback.message.edit_text(
+        "📦 <b>Оформлення замовлення</b>\n\n"
+        "Крок 1 з 2: Введіть адресу доставки\n\n"
+        "Наприклад: <code>м. Київ, вул. Хрещатик, 1, кв. 10</code>\n\n"
+        "Для скасування натисніть /start",
+        parse_mode="HTML"
+    )
+
+    await callback.answer()
+
+
+@router.message(OrderStates.waiting_for_address)
+async def process_order_address(message: Message, state: FSMContext):
+    """
+    Обробка адреси доставки
+    Запитує коментар до замовлення
+    """
+    address = message.text.strip()
+
+    # Перевірка на команди
+    if address.startswith("/"):
+        await state.clear()
+        return
+
+    # Мінімальна валідація адреси
+    if len(address) < 10:
+        await message.answer(
+            "❌ Занадто коротка адреса.\n"
+            "Введіть повну адресу доставки (мінімум 10 символів)."
+        )
+        return
+
+    # Зберігаємо адресу
+    await state.update_data(address=address)
+
+    # Переходимо до коментаря
+    await state.set_state(OrderStates.waiting_for_comment)
+
+    await message.answer(
+        "✅ Адреса збережена!\n\n"
+        "📝 Крок 2 з 2: Додайте коментар до замовлення\n\n"
+        "Наприклад: <code>Доставити після 18:00, передзвоніть за 30 хв</code>\n\n"
+        "Або натисніть /skip щоб пропустити",
+        parse_mode="HTML"
+    )
+
+
+@router.message(OrderStates.waiting_for_comment)
+async def process_order_comment(message: Message, state: FSMContext):
+    """
+    Обробка коментаря до замовлення
+    Формує фінальне підтвердження
+    """
+    comment = message.text.strip()
+    user_id = message.from_user.id
+
+    # Перевірка на /skip
+    if comment == "/skip":
+        comment = "Без коментаря"
+    # Перевірка на /start - скасування
+    elif comment.startswith("/"):
+        await state.clear()
+        return
+
+    # Зберігаємо коментар
+    await state.update_data(comment=comment)
+
+    # Отримуємо всі дані замовлення
+    data = await state.get_data()
+
+    # Формуємо текст замовлення
+    text = "🎉 <b>Замовлення оформлено!</b>\n\n"
+    text += "📋 <b>Деталі замовлення:</b>\n\n"
+
+    # Товари
+    text += "🛒 <b>Товари:</b>\n"
+    for product_name, quantity, price in data["cart_items"]:
+        if price:
+            total_price = price * quantity
+            text += f"  • {product_name}\n"
+            text += f"    {quantity} шт × {price:.2f} грн = {total_price:.2f} грн\n"
+        else:
+            text += f"  • {product_name} - {quantity} шт\n"
+
+    # Загальна сума
+    text += f"\n💰 <b>Разом:</b> {data['total_sum']:.2f} грн\n\n"
+
+    # Контактні дані
+    text += f"📱 <b>Телефон:</b> {data['phone']}\n"
+    text += f"📍 <b>Адреса:</b> {data['address']}\n"
+    text += f"📝 <b>Коментар:</b> {comment}\n\n"
+
+    text += "✅ Наш менеджер зв'яжеться з вами найближчим часом!\n\n"
+    text += "Дякуємо за замовлення! 🙏"
+
+    await message.answer(text, reply_markup=reply.get_main_menu(), parse_mode="HTML")
+
+    # Логування замовлення
+    logger.info(
+        f"Замовлення оформлено - Користувач: {user_id} ({data['user_name']}), "
+        f"Телефон: {data['phone']}, Адреса: {data['address']}, "
+        f"Сума: {data['total_sum']:.2f} грн, Коментар: {comment}"
+    )
+
+    # Очищаємо кошик після оформлення
+    async with get_session() as session:
+        await clear_cart(session, user_id)
+
+    # Очищаємо стан FSM
+    await state.clear()
+
+    logger.info(f"Кошик користувача {user_id} очищено після оформлення замовлення")
