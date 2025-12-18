@@ -114,7 +114,13 @@ async def get_product_by_id(
     Returns:
         Product або None
     """
-    stmt = select(Product).where(Product.id == product_id)
+    from sqlalchemy.orm import joinedload
+
+    stmt = (
+        select(Product)
+        .where(Product.id == product_id)
+        .options(joinedload(Product.category))  # Eager load category
+    )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
