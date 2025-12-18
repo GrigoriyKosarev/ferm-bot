@@ -200,7 +200,7 @@ def get_products_keyboard(
     return builder.as_markup()
 
 
-def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int = 1, product_url: str = None) -> InlineKeyboardMarkup:
+def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int = 1, product_url: str = None, show_ai_button: bool = False) -> InlineKeyboardMarkup:
     """
     Inline клавіатура для детальної картки товару
 
@@ -209,6 +209,7 @@ def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int
         category_id: ID категорії (для кнопки "Назад")
         quantity: Поточна кількість товару (за замовчуванням 1)
         product_url: URL товару на сайті (опціонально)
+        show_ai_button: Показувати кнопку AI-консультації (опціонально)
 
     Returns:
         InlineKeyboardMarkup: Клавіатура з управлінням кількості та кнопкою "Додати в кошик"
@@ -239,7 +240,16 @@ def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int
         )
     )
 
-    # Рядок 3: Перейти на сайт (якщо є URL)
+    # Рядок 3: AI-консультація (якщо увімкнено)
+    if show_ai_button:
+        builder.row(
+            InlineKeyboardButton(
+                text="🤖 Консультація з ШІ по товару",
+                callback_data=f"ai_consult:{product_id}"
+            )
+        )
+
+    # Рядок 4: Перейти на сайт (якщо є URL)
     if product_url:
         builder.row(
             InlineKeyboardButton(
@@ -248,7 +258,7 @@ def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int
             )
         )
 
-    # Рядок 4: Назад до категорії
+    # Рядок 5: Назад до категорії
     builder.row(
         InlineKeyboardButton(
             text="⬅️ Назад до списку",

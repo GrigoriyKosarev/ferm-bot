@@ -12,6 +12,7 @@ from bot.queries import (
 )
 from bot.keyboards.inline import get_categories_keyboard_from_db, get_products_keyboard, get_product_detail_keyboard
 from bot.states import SearchStates
+from bot.config import settings
 
 router = Router(name="catalog")
 
@@ -197,7 +198,8 @@ async def callback_product(callback: CallbackQuery):
             product_id=product.id,
             category_id=product.category_id,
             quantity=1,  # За замовчуванням 1
-            product_url=product.product_url  # URL товару на сайті
+            product_url=product.product_url,  # URL товару на сайті
+            show_ai_button=bool(settings.OPENAI_API_KEY)  # AI консультація якщо є ключ
         )
 
         # Якщо є фото - показуємо з фото
@@ -255,7 +257,8 @@ async def callback_product_qty(callback: CallbackQuery):
             product_id=product.id,
             category_id=product.category_id,
             quantity=new_qty,
-            product_url=product.product_url
+            product_url=product.product_url,
+            show_ai_button=bool(settings.OPENAI_API_KEY)
         )
 
         # Оновлюємо клавіатуру (текст залишається той самий)
