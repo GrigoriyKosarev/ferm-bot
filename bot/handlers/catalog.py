@@ -192,6 +192,10 @@ async def callback_product(callback: CallbackQuery):
 
         text += f"✅ <b>Наявність:</b> {'В наявності' if product.available else 'Немає в наявності'}\n"
 
+        # Показуємо норму застосування якщо вказана
+        if product.application_rate:
+            text += f"📊 <b>Норма застосування:</b> {product.application_rate} кг/га\n"
+
         # Клавіатура з управлінням кількості
         keyboard = get_product_detail_keyboard(
             product_id=product.id,
