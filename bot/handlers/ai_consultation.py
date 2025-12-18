@@ -58,9 +58,6 @@ def get_product_context(product) -> str:
     if product.price:
         context += f"Ціна: {product.price:.2f} грн\n"
 
-    if product.application_rate:
-        context += f"Норма застосування: {product.application_rate} кг/га\n"
-
     context += f"\nВідповідай на питання користувача у контексті цього товару."
 
     return context
