@@ -168,6 +168,7 @@ class Settings(BaseSettings):
     """
 
     OPENAI_MODEL: str = "gpt-4o-mini"
+    # OPENAI_MODEL: str = "gpt-5"
     """
     Модель OpenAI для використання
 
