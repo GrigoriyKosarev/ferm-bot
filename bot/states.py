@@ -18,3 +18,10 @@ class NormCalculationStates(StatesGroup):
     Стани для розрахунку норм застосування
     """
     waiting_for_area = State()  # Очікування введення площі в гектарах
+
+
+class AIConsultationStates(StatesGroup):
+    """
+    Стани для AI-консультації по товару
+    """
+    chatting = State()  # Активний діалог з AI про товар

@@ -43,7 +43,7 @@ from bot.logger import logger
 from bot.database import init_db, close_db, get_session
 from bot.middlewares import PhoneCheckMiddleware
 
-from handlers import start_router, menu_router, catalog_router
+from handlers import start_router, menu_router, catalog_router, ai_consultation_router
 
 # ========================================
 # КРОК 2: Токен тепер з .env файлу!
@@ -110,7 +110,8 @@ async def main():
     dp.include_router(start_router)
     dp.include_router(menu_router)
     dp.include_router(catalog_router)
-    logger.info("✅ Роутери підключено: start, menu, catalog")
+    dp.include_router(ai_consultation_router)
+    logger.info("✅ Роутери підключено: start, menu, catalog, ai_consultation")
 
     # Крок 4: Видалення webhook (якщо був)
     logger.info("🧹 Очищаю webhook...")
