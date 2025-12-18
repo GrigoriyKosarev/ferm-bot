@@ -200,7 +200,7 @@ def get_products_keyboard(
     return builder.as_markup()
 
 
-def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int = 1, product_url: str = None, application_rate: float = None, show_ai_button: bool = False) -> InlineKeyboardMarkup:
+def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int = 1, product_url: str = None, show_ai_button: bool = False) -> InlineKeyboardMarkup:
     """
     Inline клавіатура для детальної картки товару
 
@@ -209,7 +209,6 @@ def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int
         category_id: ID категорії (для кнопки "Назад")
         quantity: Поточна кількість товару (за замовчуванням 1)
         product_url: URL товару на сайті (опціонально)
-        application_rate: Норма застосування кг/га (опціонально)
         show_ai_button: Показувати кнопку AI-консультації (опціонально)
 
     Returns:
@@ -241,16 +240,7 @@ def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int
         )
     )
 
-    # Рядок 3: Розрахунок норм застосування (якщо є норма)
-    if application_rate:
-        builder.row(
-            InlineKeyboardButton(
-                text="📊 Розрахувати норму застосування",
-                callback_data=f"calc_norm:{product_id}"
-            )
-        )
-
-    # Рядок 4: AI-консультація (якщо увімкнено)
+    # Рядок 3: AI-консультація (якщо увімкнено)
     if show_ai_button:
         builder.row(
             InlineKeyboardButton(
@@ -259,7 +249,7 @@ def get_product_detail_keyboard(product_id: int, category_id: int, quantity: int
             )
         )
 
-    # Рядок 5: Перейти на сайт (якщо є URL)
+    # Рядок 4: Перейти на сайт (якщо є URL)
     if product_url:
         builder.row(
             InlineKeyboardButton(

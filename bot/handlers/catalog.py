@@ -11,7 +11,7 @@ from bot.queries import (
     add_to_cart, search_products, count_search_results, count_products_by_category
 )
 from bot.keyboards.inline import get_categories_keyboard_from_db, get_products_keyboard, get_product_detail_keyboard
-from bot.states import SearchStates, NormCalculationStates
+from bot.states import SearchStates
 from bot.config import settings
 
 router = Router(name="catalog")
@@ -193,17 +193,12 @@ async def callback_product(callback: CallbackQuery):
 
         text += f"✅ <b>Наявність:</b> {'В наявності' if product.available else 'Немає в наявності'}\n"
 
-        # Показуємо норму застосування якщо вказана
-        if product.application_rate:
-            text += f"📊 <b>Норма застосування:</b> {product.application_rate} кг/га\n"
-
         # Клавіатура з управлінням кількості
         keyboard = get_product_detail_keyboard(
             product_id=product.id,
             category_id=product.category_id,
             quantity=1,  # За замовчуванням 1
             product_url=product.product_url,  # URL товару на сайті
-            application_rate=product.application_rate,  # Норма застосування кг/га
             show_ai_button=bool(settings.OPENAI_API_KEY)  # AI консультація якщо є ключ
         )
 
@@ -263,7 +258,6 @@ async def callback_product_qty(callback: CallbackQuery):
             category_id=product.category_id,
             quantity=new_qty,
             product_url=product.product_url,
-            application_rate=product.application_rate,
             show_ai_button=bool(settings.OPENAI_API_KEY)
         )
 
@@ -306,161 +300,6 @@ async def callback_add_to_cart(callback: CallbackQuery):
             message += f"\nВартість: {total:.2f} грн"
 
         await callback.answer(message, show_alert=True)
-
-
-# ========================================
-# РОЗРАХУНОК НОРМ ЗАСТОСУВАННЯ
-# ========================================
-
-@router.callback_query(F.data.startswith("calc_norm:"))
-async def callback_calc_norm_start(callback: CallbackQuery, state: FSMContext):
-    """
-    Початок розрахунку норм застосування - запит на введення площі
-    """
-    # Формат: "calc_norm:123"
-    product_id = int(callback.data.split(":")[1])
-
-    async with get_session() as session:
-        product = await get_product_by_id(session, product_id)
-
-        if not product:
-            await callback.answer("❌ Товар не знайдено", show_alert=True)
-            return
-
-        if not product.application_rate:
-            await callback.answer("❌ Для цього товару не вказано норму застосування", show_alert=True)
-            return
-
-    # Зберігаємо product_id в FSM
-    await state.update_data(product_id=product_id)
-    await state.set_state(NormCalculationStates.waiting_for_area)
-
-    # Перевіряємо чи це фото-повідомлення
-    if callback.message.photo:
-        # Якщо фото - видаляємо і створюємо нове
-        chat_id = callback.message.chat.id
-        await callback.message.delete()
-        await callback.bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "📊 <b>Розрахунок норм застосування</b>\n\n"
-                "Введіть площу обробки в гектарах:\n\n"
-                "Наприклад: <code>100</code> або <code>50.5</code>\n\n"
-                "Для скасування натисніть /start"
-            ),
-            parse_mode="HTML"
-        )
-    else:
-        # Якщо текст - редагуємо
-        await callback.message.edit_text(
-            "📊 <b>Розрахунок норм застосування</b>\n\n"
-            "Введіть площу обробки в гектарах:\n\n"
-            "Наприклад: <code>100</code> або <code>50.5</code>\n\n"
-            "Для скасування натисніть /start",
-            parse_mode="HTML"
-        )
-
-    await callback.answer()
-
-
-@router.message(NormCalculationStates.waiting_for_area)
-async def process_area_input(message: Message, state: FSMContext):
-    """
-    Обробка введення площі та розрахунок необхідної кількості товару
-    """
-    # Перевірка на команди
-    if message.text.startswith("/"):
-        await state.clear()
-        return
-
-    # Спроба конвертувати введений текст в число
-    try:
-        area = float(message.text.strip().replace(",", "."))
-
-        if area <= 0:
-            await message.answer(
-                "❌ Площа повинна бути більше 0.\n"
-                "Спробуйте ще раз або натисніть /start для скасування."
-            )
-            return
-
-    except ValueError:
-        await message.answer(
-            "❌ Невірний формат числа.\n"
-            "Введіть площу в гектарах (наприклад: 100 або 50.5)\n\n"
-            "Для скасування натисніть /start"
-        )
-        return
-
-    # Отримуємо product_id з FSM
-    data = await state.get_data()
-    product_id = data.get("product_id")
-
-    async with get_session() as session:
-        product = await get_product_by_id(session, product_id)
-
-        if not product or not product.application_rate:
-            await message.answer("❌ Помилка: товар або норму застосування не знайдено")
-            await state.clear()
-            return
-
-        # Розрахунок необхідної кількості
-        total_kg = area * product.application_rate
-
-        # Формуємо повідомлення з результатом
-        text = f"📊 <b>Розрахунок норм застосування</b>\n\n"
-        text += f"<b>Товар:</b> {product.name}\n"
-        text += f"<b>Площа:</b> {area} га\n"
-        text += f"<b>Норма застосування:</b> {product.application_rate} кг/га\n\n"
-        text += f"<b>Необхідна кількість:</b> {total_kg:.2f} кг\n"
-
-        if product.price:
-            total_price = (total_kg * product.price)
-            text += f"<b>Орієнтовна вартість:</b> {total_price:.2f} грн\n"
-
-        # Створюємо клавіатуру з кнопками
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-        from aiogram.types import InlineKeyboardButton
-
-        builder = InlineKeyboardBuilder()
-
-        # Розраховуємо кількість штук (заокруглюємо вгору)
-        import math
-        quantity = math.ceil(total_kg)
-
-        # Кнопка "Додати в кошик"
-        builder.row(
-            InlineKeyboardButton(
-                text=f"🛒 Додати в кошик ({quantity} кг)",
-                callback_data=f"add_to_cart:{product_id}:{quantity}"
-            )
-        )
-
-        # Кнопка "Перейти на сайт" (якщо є URL)
-        if product.product_url:
-            builder.row(
-                InlineKeyboardButton(
-                    text="🌐 Перейти на сайт",
-                    url=product.product_url
-                )
-            )
-
-        # Кнопка "Назад до товару"
-        builder.row(
-            InlineKeyboardButton(
-                text="⬅️ Назад до товару",
-                callback_data=f"product:{product_id}"
-            )
-        )
-
-        await message.answer(
-            text,
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML"
-        )
-
-    # Очищаємо стан FSM
-    await state.clear()
 
 
 @router.callback_query(F.data == "ignore")

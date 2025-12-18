@@ -13,13 +13,6 @@ class SearchStates(StatesGroup):
     waiting_for_query = State()  # Очікування пошукового запиту від користувача
 
 
-class NormCalculationStates(StatesGroup):
-    """
-    Стани для розрахунку норм застосування
-    """
-    waiting_for_area = State()  # Очікування введення площі в гектарах
-
-
 class AIConsultationStates(StatesGroup):
     """
     Стани для AI-консультації по товару
