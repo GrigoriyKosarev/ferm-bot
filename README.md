@@ -1,78 +1,75 @@
-# 🌾 FERM Telegram Bot - Покрокова розробка з нуля
+# 🌾 FERM Bot - Telegram бот для агротехнологічної платформи
 
-> Навчальний проект: повна розробка Telegram бота для агротехнологічної платформи FERM
-> Кожен крок детально задокументований для глибокого розуміння принципів роботи
+> Telegram бот для інтернет-магазину агротоварів FERM з каталогом продукції, кошиком та AI-консультаціями
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Aiogram 3.x](https://img.shields.io/badge/aiogram-3.x-green.svg)](https://docs.aiogram.dev/)
+[![Aiogram 3.13](https://img.shields.io/badge/aiogram-3.13-green.svg)](https://docs.aiogram.dev/)
 [![Poetry](https://img.shields.io/badge/poetry-dependency%20management-blue.svg)](https://python-poetry.org/)
 
 ---
 
 ## 🎯 Про проект
 
-Це **навчальна переробка** FERM бота з детальними поясненнями кожного кроку.
+Telegram бот для платформи [FERM](https://ferm.in.ua) - онлайн агромагазину з добривами, засобами захисту рослин та агропрепаратами.
 
-**Мета:** Зрозуміти ВСІ аспекти розробки Telegram ботів - від найпростішого "Hello World" до повноцінного агропомічника.
+### ✨ Основні функції
 
-**Структура проекту:**
-- **`bot/`** - новий проект (покрокова розробка) 🚀
-- **`core_reference/`** - старий проект (тільки для довідки) 📚
-
----
-
-## 📚 Покрокове навчання
-
-Проект розділено на 9 кроків, від простого до складного:
-
-| Крок | Тема | Статус |
-|------|------|--------|
-| **1** | Мінімальний бот з /start | ✅ Готово |
-| **2** | Конфігурація через .env | 🔜 Наступний |
-| **3** | База даних (SQLite) | ⏳ Заплановано |
-| **4** | Логування (Loguru) | ⏳ Заплановано |
-| **5** | Головне меню з кнопками | ⏳ Заплановано |
-| **6** | Каталог товарів | ⏳ Заплановано |
-| **7** | Кошик покупок | ⏳ Заплановано |
-| **8** | АгроПогода (AccuWeather API) | ⏳ Заплановано |
-| **9** | ШІ-консультант (OpenAI) | ⏳ Заплановано |
-
-**Детальний гайд:** Дивіться [`bot/README.md`](bot/README.md)
+- 📦 **Каталог товарів** - перегляд продукції по категоріях
+- 🛒 **Кошик покупок** - додавання товарів, зміна кількості
+- 🤖 **AI-консультант** - консультації по товарах через OpenAI GPT (опціонально)
+- 📱 **Захист доступу** - middleware для перевірки номера телефону
+- 🔗 **Інтеграція з сайтом** - оформлення замовлень через сайт FERM
+- 💬 **Зручний інтерфейс** - reply та inline клавіатури
 
 ---
 
 ## 🚀 Швидкий старт
 
 ### Вимоги
+
 - Python 3.10+
 - Poetry (менеджер залежностей)
 - Telegram Bot Token від [@BotFather](https://t.me/BotFather)
+- OpenAI API Key (опціонально, для AI-консультацій)
 
-### Крок 1: Встановлення
+### Встановлення
 
 ```bash
-# Клонувати репозиторій
+# 1. Клонувати репозиторій
 git clone <repository-url>
 cd ferm-bot
 
-# Встановити Poetry (якщо немає)
+# 2. Встановити Poetry (якщо немає)
 curl -sSL https://install.python-poetry.org | python3 -
 
-# Встановити залежності
+# 3. Встановити залежності
 poetry install
-```
 
-### Крок 2: Налаштування
-
-```bash
-# Скопіювати приклад конфігурації
+# 4. Створити .env файл
 cp .env.example .env
 
-# Відредагувати .env та вставити токен від @BotFather
+# 5. Відредагувати .env та додати BOT_TOKEN
 nano .env
 ```
 
-### Крок 3: Запуск
+### Конфігурація
+
+Відредагуйте `.env` файл:
+
+```bash
+# Обов'язково
+BOT_TOKEN=your_telegram_bot_token_from_botfather
+
+# Опціонально
+OPENAI_API_KEY=sk-...          # Для AI-консультацій
+OPENAI_MODEL=gpt-4o-mini       # За замовчуванням gpt-4o-mini
+DEBUG=False                     # Режим відладки
+LOG_LEVEL=INFO                  # Рівень логування
+LOG_TO_FILE=True               # Зберігати логи у файл
+DATABASE_URL=sqlite+aiosqlite:///ferm_bot.db  # URL бази даних
+```
+
+### Запуск
 
 ```bash
 # Активувати віртуальне середовище
@@ -91,101 +88,215 @@ poetry run python -m bot.main
 
 ```
 ferm-bot/
-├── bot/                       # 🚀 ОСНОВНИЙ проект (з ним працюємо)
-│   ├── __init__.py
-│   ├── main.py                # Крок 1: Мінімальний бот
-│   └── README.md              # Детальний гайд по всіх кроках
-│
-├── core_reference/            # 📚 Старий проект (для довідки)
-│   ├── core/                  # Старий код
-│   ├── Dockerfile
-│   ├── Makefile
-│   ├── docker-compose.yml
-│   └── README_OLD.md
-│
-├── .venv/                     # Віртуальне середовище (створюється Poetry)
-├── pyproject.toml             # Poetry конфігурація
-├── poetry.lock                # Точні версії пакетів
-├── .gitignore                 # Git ignore
-├── .env.example               # Приклад налаштувань
-└── README.md                  # Цей файл
+├── bot/                           # Основний пакет бота
+│   ├── handlers/                  # Обробники подій
+│   │   ├── start.py              # Команда /start, запит номера
+│   │   ├── menu.py               # Головне меню
+│   │   ├── catalog.py            # Каталог товарів
+│   │   └── ai_consultation.py    # AI-консультації
+│   ├── keyboards/                 # Клавіатури
+│   │   ├── reply.py              # Reply клавіатури (меню)
+│   │   ├── inline.py             # Inline кнопки (товари)
+│   │   └── phone.py              # Запит номера телефону
+│   ├── middlewares/               # Middleware
+│   │   └── phone_check.py        # Перевірка номера телефону
+│   ├── models/                    # Моделі БД (SQLAlchemy)
+│   │   ├── user.py               # Модель користувача
+│   │   ├── category.py           # Категорії товарів
+│   │   ├── product.py            # Товари
+│   │   └── cart_item.py          # Позиції кошика
+│   ├── repositories/              # Репозиторії (query patterns)
+│   │   └── product_repo.py       # Запити до товарів
+│   ├── config.py                  # Конфігурація (Pydantic Settings)
+│   ├── database.py                # Підключення до БД
+│   ├── logger.py                  # Налаштування логування
+│   ├── queries.py                 # Допоміжні запити
+│   ├── states.py                  # FSM стани
+│   └── main.py                    # Точка входу
+├── logs/                          # Логи (створюється автоматично)
+├── .env                           # Конфігурація (не в Git!)
+├── .env.example                   # Приклад конфігурації
+├── pyproject.toml                 # Poetry конфігурація
+├── poetry.lock                    # Залежності (точні версії)
+└── README.md                      # Ця документація
 ```
-
----
-
-## 💡 Навчальний підхід
-
-### Чому покроково?
-
-1. **Глибоке розуміння** - кожен крок пояснює ЧОМУ так, а не інакше
-2. **Поступове ускладнення** - від 20 рядків до повноцінного бота
-3. **Детальні коментарі** - кожен рядок коду пояснено
-4. **Практика** - тестуєте кожен крок окремо
-
-### Як користуватись?
-
-1. **Читайте [`bot/README.md`](bot/README.md)** - там повний план
-2. **Виконуйте кроки послідовно** - не перестрибуйте
-3. **Експериментуйте** - змінюйте код, дивіться що станеться
-4. **Використовуйте core_reference/** - як довідник "а як було"
 
 ---
 
 ## 🛠 Технології
 
-- **Aiogram 3.13** - сучасний async фреймворк для Telegram ботів
-- **SQLAlchemy 2.0** - ORM для роботи з базою даних
-- **Pydantic 2.9** - валідація даних
-- **Loguru** - зручне логування
-- **Poetry** - управління залежностями
-- **httpx** - async HTTP клієнт
+### Core
+
+- **[Aiogram 3.13](https://docs.aiogram.dev/)** - async фреймворк для Telegram ботів
+- **[SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/)** - async ORM для роботи з БД
+- **[Pydantic 2.9](https://docs.pydantic.dev/)** - валідація даних та налаштувань
+- **[Poetry](https://python-poetry.org/)** - управління залежностями
+
+### Integrations
+
+- **[OpenAI](https://platform.openai.com/)** - AI-консультації по товарах (GPT-4o-mini)
+- **[FERM API](https://ferm.in.ua)** - інтеграція з сайтом (оформлення замовлень)
+
+### Database
+
+- **SQLite** (розробка) - `sqlite+aiosqlite://`
+- **PostgreSQL** (продакшн) - `postgresql+asyncpg://`
+
+### Infrastructure
+
+- **Docker** - контейнеризація (готово до розгортання)
+- **Loguru** - структуроване логування з ротацією
 
 ---
 
-## 📖 Корисні ресурси
+## 📖 Використання
 
-- [Aiogram документація](https://docs.aiogram.dev/)
-- [Telegram Bot API](https://core.telegram.org/bots/api)
-- [Poetry документація](https://python-poetry.org/docs/)
-- [SQLAlchemy 2.0 документація](https://docs.sqlalchemy.org/en/20/)
+### Для користувачів
 
----
+1. Запустити бота в Telegram
+2. Натиснути **"Поділитися номером телефону"** (обов'язково)
+3. Використовувати меню:
+   - **📦 Каталог** - перегляд товарів по категоріях
+   - **🛒 Кошик** - перегляд та редагування кошика
+4. На сторінці товару:
+   - **➕/➖** - змінити кількість
+   - **🛒 Додати до кошика** - додати товар
+   - **🔗 Перейти на сайт** - переглянути на сайті
+   - **🤖 Консультація з ШІ** - задати питання про товар (якщо увімкнено)
+5. В кошику:
+   - **📦 Оформити замовлення** - перейти на сайт для оформлення
 
-## 🤝 Старий проект (core_reference)
+### Для розробників
 
-Якщо потрібно подивитись як було раніше:
+#### База даних
 
-```bash
-cd core_reference/
-cat README_OLD.md     # Стара документація
-cd core/              # Старий код
+```python
+# Приклад роботи з БД
+from bot.database import get_session
+from bot.queries import get_product_by_id
+
+async with get_session() as session:
+    product = await get_product_by_id(session, product_id=1)
+    print(product.name)
 ```
 
-**Примітка:** Старий проект працює, але використовує інший підхід. Новий `bot/` - це переписування з нуля для навчання.
+#### Додавання нового обробника
+
+1. Створити файл в `bot/handlers/`
+2. Створити Router
+3. Зареєструвати в `bot/handlers/__init__.py`
+4. Підключити в `bot/main.py`
+
+#### Міграції БД
+
+```bash
+# Створити нову міграцію
+alembic revision --autogenerate -m "Add new field"
+
+# Застосувати міграції
+alembic upgrade head
+```
 
 ---
 
-## ❓ FAQ
+## 🐳 Docker розгортання
 
-**Q: Навіщо переписувати якщо є готовий core/?**
-A: Щоб ЗРОЗУМІТИ кожен аспект. Готовий код можна подивитись в core_reference/.
+### Локально
 
-**Q: Скільки часу займе проходження всіх кроків?**
-A: 1-2 дні якщо виконувати по 2-3 кроки на день з розумінням.
+```bash
+# Збірка образу
+docker build -t ferm-bot .
 
-**Q: Чи можна пропустити кроки?**
-A: Не рекомендую. Кожен крок базується на попередньому.
+# Запуск контейнера
+docker run -d \
+  --name ferm-bot \
+  --env-file .env \
+  -v $(pwd)/logs:/app/logs \
+  ferm-bot
+```
 
-**Q: Де знайти токен від @BotFather?**
-A: Telegram → [@BotFather](https://t.me/BotFather) → /newbot → слідуйте інструкціям
+### Docker Compose (рекомендовано)
+
+```bash
+# Запуск з PostgreSQL
+docker-compose up -d
+
+# Переглянути логи
+docker-compose logs -f bot
+
+# Зупинити
+docker-compose down
+```
+
+**Примітка:** Створіть `docker-compose.yml` та `Dockerfile` за потребою. База вже готова до роботи з PostgreSQL.
+
+---
+
+## 🧪 Тестування
+
+```bash
+# Запустити тести
+poetry run pytest
+
+# З покриттям
+poetry run pytest --cov=bot --cov-report=html
+
+# Лінтинг
+poetry run black bot/
+poetry run isort bot/
+poetry run flake8 bot/
+poetry run mypy bot/
+```
+
+---
+
+## 📝 Розробка
+
+### Pre-commit hooks
+
+```bash
+# Встановити pre-commit hooks
+poetry run pre-commit install
+
+# Запустити вручну
+poetry run pre-commit run --all-files
+```
+
+### Coding Style
+
+- **Black** (форматування) - line length 100
+- **isort** (сортування імпортів) - profile "black"
+- **flake8** (лінтинг)
+- **mypy** (type checking)
+
+---
+
+## 🔐 Безпека
+
+- ❌ **НІКОЛИ** не комітьте `.env` файл в Git
+- ✅ Використовуйте `.env.example` як шаблон
+- ✅ Middleware для перевірки доступу (телефон)
+- ✅ Валідація даних через Pydantic
+- ✅ Prepared statements (SQLAlchemy) - захист від SQL injection
 
 ---
 
 ## 📞 Підтримка
 
-- **Питання по коду:** Дивіться коментарі в `bot/main.py`
-- **Довідка:** [`bot/README.md`](bot/README.md)
-- **Старий проект:** `core_reference/README_OLD.md`
+- **Питання по коду:** Дивіться коментарі в файлах
+- **Документація Aiogram:** https://docs.aiogram.dev/
+- **Telegram Bot API:** https://core.telegram.org/bots/api
+
+---
+
+## 🗺 Roadmap
+
+- [ ] Переклад на англійську мову
+- [ ] Адмін-панель (керування товарами)
+- [ ] Історія замовлень
+- [ ] Push-повідомлення про акції
+- [ ] Інтеграція з платіжними системами
+- [ ] Telegram Mini App для розширеного UI
 
 ---
 
@@ -195,8 +306,82 @@ MIT License
 
 ---
 
-**Готові почати? Відкрийте [`bot/README.md`](bot/README.md) і починайте з Кроку 1!** 🚀
+## 🤝 Contributing
+
+Pull requests are welcome! Для значних змін спочатку відкрийте issue для обговорення.
 
 ---
 
-<sub>Створено з ❤️ для аграріїв України 🇺🇦</sub>
+**Зроблено з ❤️ для аграріїв України 🇺🇦**
+
+---
+
+## 📚 Додаткова інформація
+
+### Структура БД
+
+```
+User (користувачі)
+├── id (PK)
+├── telegram_id (unique)
+├── username
+├── first_name
+├── last_name
+├── phone_number
+└── created_at
+
+Category (категорії товарів)
+├── id (PK)
+├── name
+└── products (relationship)
+
+Product (товари)
+├── id (PK)
+├── name
+├── description
+├── price
+├── available
+├── category_id (FK)
+└── product_url
+
+CartItem (позиції кошика)
+├── id (PK)
+├── user_id (FK)
+├── product_id (FK)
+├── quantity
+└── added_at
+```
+
+### AI-консультації
+
+Система використовує OpenAI GPT-4o-mini для надання консультацій по товарах:
+
+- Контекст товару (назва, опис, ціна, категорія)
+- Історія діалогу (останні 10 повідомлень)
+- Роль агронома-консультанта
+- Відповіді українською мовою
+
+Для вимкнення AI-консультацій просто не вказуйте `OPENAI_API_KEY` в `.env`.
+
+---
+
+### FAQ
+
+**Q: Як отримати Telegram Bot Token?**
+A: Telegram → [@BotFather](https://t.me/BotFather) → /newbot → слідуйте інструкціям
+
+**Q: Як змінити мову бота?**
+A: Всі тексти зараз хардкоднуті українською. Для i18n треба додати систему перекладів (наприклад, через aiogram i18n middleware)
+
+**Q: Чи можна використовувати без AI-консультацій?**
+A: Так! Просто не вказуйте `OPENAI_API_KEY` в `.env` - кнопка AI не буде показуватись
+
+**Q: Як перейти з SQLite на PostgreSQL?**
+A: Змініть `DATABASE_URL` в `.env`:
+```
+DATABASE_URL=postgresql+asyncpg://user:password@localhost/ferm_bot
+```
+
+**Q: Де дивитись логи?**
+A: В директорії `logs/bot.log` (якщо `LOG_TO_FILE=True`) або в консолі
+
