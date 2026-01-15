@@ -42,8 +42,7 @@ from bot.logger import logger
 # КРОК 4: Імпортуємо БД
 from bot.database import init_db, close_db, get_session
 from bot.middlewares import PhoneCheckMiddleware
-
-from handlers import start_router, menu_router, catalog_router, ai_consultation_router
+from bot.handlers import start_router, menu_router, catalog_router, ai_consultation_router
 
 # ========================================
 # КРОК 2: Токен тепер з .env файлу!
