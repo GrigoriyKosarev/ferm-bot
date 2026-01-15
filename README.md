@@ -42,8 +42,10 @@ cd ferm-bot
 # 2. Встановити Poetry (якщо немає)
 curl -sSL https://install.python-poetry.org | python3 -
 
-# 3. Встановити залежності
+# 3. Встановити залежності проекту
 poetry install
+# Це встановить ~71 пакет: aiogram, sqlalchemy, openai та інші
+# Займає 1-2 хвилини при першому запуску
 
 # 4. Створити .env файл
 cp .env.example .env
@@ -67,6 +69,18 @@ DEBUG=False                     # Режим відладки
 LOG_LEVEL=INFO                  # Рівень логування
 LOG_TO_FILE=True               # Зберігати логи у файл
 DATABASE_URL=sqlite+aiosqlite:///ferm_bot.db  # URL бази даних
+```
+
+### Встановлення залежностей
+
+**Перед першим запуском** потрібно встановити всі залежності проекту:
+
+```bash
+# Встановити залежності (aiogram, sqlalchemy, openai та ін.)
+poetry install
+
+# Це створить віртуальне середовище та встановить ~71 пакет
+# Займає 1-2 хвилини при першому запуску
 ```
 
 ### Запуск
