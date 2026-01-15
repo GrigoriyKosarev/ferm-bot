@@ -72,15 +72,15 @@ DATABASE_URL=sqlite+aiosqlite:///ferm_bot.db  # URL бази даних
 ### Запуск
 
 ```bash
-# Активувати віртуальне середовище
-poetry shell
-
-# Запустити бота
-python -m bot.main
-
-# АБО без активації середовища:
+# Рекомендований спосіб (Poetry 2.0+):
 poetry run python -m bot.main
+
+# Альтернативно - активувати середовище:
+eval $(poetry env activate)
+python -m bot.main
 ```
+
+**Примітка:** У Poetry 2.0+ команда `poetry shell` вимагає окремий плагін. Найпростіше використовувати `poetry run`.
 
 ---
 
